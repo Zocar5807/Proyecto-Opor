@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>La Oportunidad - Compraventa</title>
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <link rel="icon" href="../assets/img/logo.svg">
+  <meta name="description" content="Compra y vende con La Oportunidad. Productos, órdenes, contratos y más.">
+  <style>
+    .hero{padding:56px 0}
+    .hero__title{font-size:40px;margin:0 0 8px}
+    .hero__subtitle{color:var(--color-text-muted);margin:0 0 24px}
+    .hero__cta{display:flex;gap:12px}
+  </style>
+  <script type="module">
+    import { renderHeader } from '../assets/js/ui.js';
+    window.addEventListener('DOMContentLoaded',()=>{
+      renderHeader({ active: 'home' });
+      const btn = document.getElementById('ctaProducts');
+      btn?.addEventListener('click', ()=> location.href='products.html');
+      const loginBtn = document.getElementById('ctaLogin');
+      loginBtn?.addEventListener('click', ()=> location.href='login.html');
+    });
+  </script>
+  <script>
+    document.addEventListener('click', (e)=>{
+      if(e.target && e.target.id==='logoutLink'){
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        location.href='login.html';
+      }
+    })
+  </script>
+  </head>
+<body>
+  <header></header>
+  <main class="container">
+    <section class="hero card">
+      <img src="../assets/img/logo.svg" alt="La Oportunidad" style="height:40px;margin-bottom:16px">
+      <h1 class="hero__title">Compraventa La Oportunidad</h1>
+      <p class="hero__subtitle">Encuentra los mejores productos y gestiona tus órdenes y contratos con una experiencia simple y moderna.</p>
+      <div class="hero__cta">
+        <button id="ctaProducts" class="button">Ver productos</button>
+        <button id="ctaLogin" class="button" style="background:#fff;color:var(--color-accent);border:1px solid #E3E8EB">Iniciar sesión</button>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
+

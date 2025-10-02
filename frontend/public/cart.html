@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Carrito - La Oportunidad</title>
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <script type="module">
+    import { requireAuth } from '../assets/js/auth.js';
+    import { renderHeader } from '../assets/js/ui.js';
+    import { getCart, updateQuantity, computeTotals } from '../assets/js/cart.js';
+    requireAuth();
+    window.addEventListener('DOMContentLoaded', ()=>{
+      renderHeader({ active:'products' });
+      const tbody = document.querySelector('tbody');
+      const totalEl = document.getElementById('total');
+      const render = ()=>{
+        const items = getCart();
+        tbody.innerHTML = items.map(i=>`
+          <tr>
+            <td>${i.nombre ?? i.name}</td>
+            <td>$${Number(i.precio ?? i.price).toLocaleString()}</td>
+            <td><input class=\"input\" style=\"width:80px\" type=\"number\" min=\"0\" value=\"${i.quantity}\" data-id=\"${i.id}\"></td>
+            <td>$${(Number(i.precio ?? i.price)*i.quantity).toLocaleString()}</td>
+          </tr>
+        `).join('');
+        const { total } = computeTotals(items);
+        totalEl.textContent = `$${Number(total).toLocaleString()}`;
+      };
+      render();
+      document.addEventListener('input', (e)=>{
+        const input = e.target;
+        if (input.matches('input[type="number"][data-id]')) {
+          updateQuantity(Number(input.dataset.id), Number(input.value));
+          render();
+        }
+      });
+      document.getElementById('toCheckout').addEventListener('click', ()=> location.href='checkout.html');
+    });
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <h1>Carrito</h1>
+    <table class="table">
+      <thead><tr><th>Producto</th><th>Precio</th><th>Cantidad</th><th>Total</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+      <strong>Total: <span id="total">$0</span></strong>
+      <button class="button" id="toCheckout">Continuar al pago</button>
+    </div>
+  </main>
+</body>
+</html>
+

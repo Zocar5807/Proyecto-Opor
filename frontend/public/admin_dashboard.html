@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin - Dashboard</title>
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <link rel="icon" href="../assets/img/logo.svg">
+  <style>
+    .stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+    .stat h3{margin:0 0 8px}
+    .stat p{margin:0;color:var(--color-text-muted)}
+  </style>
+  <script type="module">
+    import { requireAuth, getRole } from '../assets/js/auth.js';
+    import { renderHeader } from '../assets/js/ui.js';
+    import { apiFetch } from '../assets/js/api.js';
+    requireAuth('admin');
+    window.addEventListener('DOMContentLoaded', async ()=>{
+      renderHeader({ active:'dashboard', isAdmin:true });
+      const ids = ['users','products','orders','requests','contracts'];
+      try {
+        const [u,p,o,s,c] = await Promise.all([
+          apiFetch('usuarios','/').catch(()=>null),
+          apiFetch('productos','').catch(()=>null),
+          apiFetch('ordenes','').catch(()=>null),
+          apiFetch('solicitudes','').catch(()=>null),
+          apiFetch('contratos','').catch(()=>null)
+        ]);
+        const toCount = (x)=> Array.isArray(x) ? x.length : (x && typeof x === 'object' && Array.isArray(x.data) ? x.data.length : (x?.count ?? x?.total ?? '—'));
+        const data = { users: toCount(u), products: toCount(p), orders: toCount(o), requests: toCount(s), contracts: toCount(c) };
+        ids.forEach(id=>{
+          const el = document.getElementById(id);
+          if (el) el.querySelector('strong').textContent = data[id] ?? '—';
+        })
+      } catch {}
+    });
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <h1>Panel de administración</h1>
+    <section class="stats">
+      <div id="users" class="card stat"><h3>Usuarios</h3><p><strong>—</strong></p></div>
+      <div id="products" class="card stat"><h3>Productos</h3><p><strong>—</strong></p></div>
+      <div id="orders" class="card stat"><h3>Órdenes</h3><p><strong>—</strong></p></div>
+      <div id="requests" class="card stat"><h3>Solicitudes</h3><p><strong>—</strong></p></div>
+      <div id="contracts" class="card stat"><h3>Contratos</h3><p><strong>—</strong></p></div>
+    </section>
+  </main>
+</body>
+</html>
+

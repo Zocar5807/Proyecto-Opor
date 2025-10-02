@@ -1,0 +1,9 @@
+.header{display:flex;align-items:center;gap:18px;padding:14px 24px;background:#fff;border-bottom:1px solid #E6F4EC;position:sticky;top:0;z-index:10;backdrop-filter:saturate(180%) blur(12px)}
+.header__logo{height:32px;filter:saturate(110%)}
+.header__nav{margin-left:auto;display:flex;gap:14px}
+.grid{display:grid;gap:18px}
+.grid--cards{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.sidebar{width:240px;min-height:100vh;background:#fff;border-right:1px solid #E6F4EC;position:sticky;top:0}
+.main{flex:1}
+.app{display:flex}
+

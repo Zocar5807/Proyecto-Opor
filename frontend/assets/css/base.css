@@ -1,0 +1,11 @@
+:root { --color-bg:#F6FCF8; --color-primary:#6AD38A; --color-primary-hover:#57C178; --color-accent:#2FAD5F; --color-text:#1E2A27; --color-text-muted:#62706C; --radius:14px; --shadow:0 10px 25px rgba(22,119,67,.12), 0 2px 8px rgba(0,0,0,.04); }
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:'Poppins', Inter, Roboto, Arial, sans-serif;background:var(--color-bg);color:var(--color-text);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+a{color:var(--color-accent);text-decoration:none;transition:color .2s ease}
+a:hover{color:var(--color-primary-hover);text-decoration:underline}
+img{max-width:100%;display:block}
+.container{max-width:1200px;margin:0 auto;padding:28px}
+::selection{background:rgba(106,211,138,.25)}
+

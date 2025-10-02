@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Productos - La Oportunidad</title>
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <link rel="icon" href="../assets/img/logo.svg">
+  <script type="module">
+    import { requireAuth } from '../assets/js/auth.js';
+    import { apiFetch } from '../assets/js/api.js';
+    import { renderHeader } from '../assets/js/ui.js';
+    requireAuth();
+    window.addEventListener('DOMContentLoaded', async ()=>{
+      renderHeader({ active:'products' });
+      const grid = document.getElementById('grid');
+      try{
+        const list = await apiFetch('productos','');
+        grid.innerHTML = list.map(p=>`
+          <article class=\"card\">
+            <h3 style=\"margin:0 0 8px\">${p.nombre ?? p.name}</h3>
+            <div style=\"color:var(--color-text-muted);margin-bottom:8px\">${p.descripcion ?? ''}</div>
+            <div style=\"font-weight:600\">$${(p.precio ?? p.price)?.toLocaleString?.() ?? p.precio}</div>
+            <div style=\"margin-top:12px\">
+              <a class=\"button\" href=\"product_detail.html?id=${p.id}\">Ver detalle</a>
+            </div>
+          </article>
+        `).join('');
+      } catch(err){
+        grid.innerHTML = '<p>Hubo un problema cargando productos.</p>';
+      }
+    });
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <h1 style="margin:16px 0">Productos</h1>
+    <section class="grid grid--cards" id="grid"></section>
+  </main>
+</body>
+</html>
+

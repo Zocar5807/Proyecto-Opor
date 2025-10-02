@@ -1,0 +1,30 @@
+# Dependencias
+node_modules/
+
+# Archivos de entorno
+.env
+.env.local
+.env.development
+.env.production
+
+# Logs y temporales
+*.log
+logs/
+tmp/
+
+# Builds y dist
+dist/
+build/
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.swp
+
+# Bases de datos locales
+*.sql
+*.db
+
+# Otros
+.DS_Store  # Para Mac
+Thumbs.db  # Para Windows

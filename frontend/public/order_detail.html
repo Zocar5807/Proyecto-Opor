@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Detalle de Orden - La Oportunidad</title>
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <script type="module">
+    import { requireAuth } from '../assets/js/auth.js';
+    import { renderHeader } from '../assets/js/ui.js';
+    import { apiFetch } from '../assets/js/api.js';
+    requireAuth();
+    function id(){ const u=new URL(location.href); return u.searchParams.get('id'); }
+    window.addEventListener('DOMContentLoaded', async ()=>{
+      renderHeader();
+      const el = document.getElementById('detail');
+      try{
+        const o = await apiFetch('ordenes',`/${id()}`);
+        console.log('Orden detalle', o);
+        // El endpoint envuelve en { ok, data }. apiFetch ya extrae data, pero si llegara ok:true sin data, intentamos data
+        const orden = (o && o.ok && o.data) ? o.data : (Array.isArray(o) ? o[0] : o);
+        const orderId = orden?.id_orden ?? orden?.id ?? '';
+        const fechaRaw = orden?.fecha_creacion ?? orden?.fecha ?? '';
+        let fechaFmt = '—';
+        if (fechaRaw) {
+          const d = new Date(fechaRaw);
+          fechaFmt = isNaN(d.getTime()) ? String(fechaRaw) : d.toLocaleString();
+        }
+        const items = (orden?.productos || orden?.items || []);
+        el.innerHTML = `
+          <div class=\"card\">
+            <h2>Orden #${orderId}</h2>
+            <p>Estado: <strong>${orden?.estado ?? orden?.status ?? 'entregado'}</strong></p>
+            <p>Fecha: ${fechaFmt}</p>
+            <h3>Items</h3>
+            <ul>${items.map(i=>`<li>${i.nombre ?? i.name} x ${i.cantidad ?? i.quantity} — $${Number(i.precio ?? i.price).toLocaleString()}</li>`).join('')}</ul>
+          </div>`;
+      }catch{
+        el.textContent = 'No se pudo cargar la orden';
+      }
+    });
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <h1>Detalle de orden</h1>
+    <section id="detail"></section>
+  </main>
+</body>
+</html>
+

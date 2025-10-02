@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin - Usuario</title>
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <script type="module">
+    import { requireAuth } from '../assets/js/auth.js';
+    import { renderHeader, showToast } from '../assets/js/ui.js';
+    import { apiFetch } from '../assets/js/api.js';
+    requireAuth('admin');
+    function id(){ const u=new URL(location.href); return u.searchParams.get('id'); }
+    window.addEventListener('DOMContentLoaded', async ()=>{
+      renderHeader({ active:'dashboard', isAdmin:true });
+      const form = document.querySelector('form');
+      try{
+        const u = await apiFetch('usuarios',`/users/${id()}`);
+        document.getElementById('name').value = u.nombre ?? u.name ?? '';
+        document.getElementById('email').value = u.email ?? '';
+        document.getElementById('role').value = u.role ?? 'client';
+      }catch{}
+      form.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        try{
+          await apiFetch('usuarios',`/users/${id()}`,{ method:'PATCH', body:{ name:document.getElementById('name').value.trim(), role: document.getElementById('role').value } });
+          showToast('Usuario actualizado');
+        }catch{ showToast('No se pudo actualizar'); }
+      });
+    });
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <h1>Usuario</h1>
+    <section class="card">
+      <form>
+        <div>
+          <label for="name">Nombre</label>
+          <input class="input" id="name" required>
+        </div>
+        <div>
+          <label for="email">Email</label>
+          <input class="input" id="email" type="email" disabled>
+        </div>
+        <div>
+          <label for="role">Rol</label>
+          <select id="role" class="input">
+            <option value="client">Cliente</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <button class="button" type="submit">Guardar</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
+

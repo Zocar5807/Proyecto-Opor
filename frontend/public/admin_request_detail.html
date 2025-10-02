@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin - Solicitud</title>
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <script type="module">
+    import { requireAuth } from '../assets/js/auth.js';
+    import { renderHeader, showToast } from '../assets/js/ui.js';
+    import { apiFetch } from '../assets/js/api.js';
+    requireAuth('admin');
+    function id(){ const u=new URL(location.href); return u.searchParams.get('id'); }
+    window.addEventListener('DOMContentLoaded', async ()=>{
+      renderHeader({ active:'dashboard', isAdmin:true });
+      const el = document.getElementById('detail');
+      const select = document.getElementById('status');
+      const montoWrap = document.getElementById('montoWrap');
+      const montoInput = document.getElementById('monto');
+      const tasaInput = document.getElementById('tasa');
+      const fechaPlazoInput = document.getElementById('fechaPlazo');
+      const plazoInput = document.getElementById('plazo');
+      const sucursalInput = document.getElementById('sucursal');
+      try{
+        const s = await apiFetch('solicitudes',`/${id()}`);
+        el.innerHTML = `<div class=\"card\"><h2>Solicitud #${s.id}</h2><p>Usuario: ${s.usuario_id ?? s.userId ?? ''}</p><p>Tipo: ${s.nombre_producto ?? s.tipo ?? '—'}</p><p>Estado: ${s.estado ?? 'Pendiente'}</p></div>`;
+        const current = String(s.estado || 'Pendiente');
+        const norm = current.charAt(0).toUpperCase() + current.slice(1).toLowerCase();
+        select.value = ['Pendiente','Aprobado','Rechazado'].includes(norm) ? norm : 'Pendiente';
+        montoWrap.style.display = select.value === 'Aprobado' ? 'block' : 'none';
+      }catch{}
+
+      select.addEventListener('change', ()=>{
+        montoWrap.style.display = select.value === 'Aprobado' ? 'block' : 'none';
+      });
+      document.querySelector('form').addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        // Normalizar a valores permitidos por el backend (capitalizados)
+        const map = { pendiente:'Pendiente', aprobado:'Aprobado', aprobada:'Aprobado', rechazado:'Rechazado', rechazada:'Rechazado' };
+        const estadoNorm = map[String(select.value||'').toLowerCase()] || 'Pendiente';
+        const body = { estado: estadoNorm };
+        if (estadoNorm === 'Aprobado') {
+          const monto = Number(montoInput.value);
+          const tasa = Number(tasaInput.value);
+          if (!(monto > 0)) { showToast('Ingresa un monto aprobado (> 0)'); return; }
+          if (isNaN(tasa) || tasa < 0 || tasa > 100) { showToast('Ingresa una tasa entre 0 y 100'); return; }
+          body.monto_aprobado = monto;
+          body.con_tasa = tasa;
+          const plazoVal = Number(plazoInput.value);
+          if (!isNaN(plazoVal) && plazoVal > 0) body.plazo = Math.round(plazoVal);
+          if (fechaPlazoInput.value) body.fecha_plazo = fechaPlazoInput.value; // YYYY-MM-DD
+          if (sucursalInput.value) body.sucursal = sucursalInput.value.trim();
+        }
+        try{
+          await apiFetch('solicitudes',`/${id()}/estado`,{ method:'PUT', body });
+          showToast('Estado actualizado');
+        }catch{ showToast('No se pudo actualizar'); }
+      });
+    });
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <h1>Solicitud</h1>
+    <section id="detail" style="margin-bottom:16px"></section>
+    <section class="card">
+      <form>
+        <label for="status">Estado</label>
+        <select id="status" class="input">
+          <option value="Pendiente">Pendiente</option>
+          <option value="Aprobado">Aprobado</option>
+          <option value="Rechazado">Rechazado</option>
+        </select>
+        <div id="montoWrap" style="display:none;margin-top:12px">
+          <label for="monto">Monto aprobado</label>
+          <input id="monto" class="input" type="number" min="1" step="0.01" placeholder="0">
+          <label for="tasa" style="margin-top:8px;display:block">Tasa (%)</label>
+          <input id="tasa" class="input" type="number" min="0" max="100" step="0.01" placeholder="0">
+          <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:8px">
+            <div>
+              <label for="plazo">Plazo (días)</label>
+              <input id="plazo" class="input" type="number" min="1" step="1" placeholder="30">
+            </div>
+            <div>
+              <label for="fechaPlazo">Fecha límite (YYYY-MM-DD)</label>
+              <input id="fechaPlazo" class="input" type="date">
+            </div>
+            <div>
+              <label for="sucursal">Sucursal</label>
+              <input id="sucursal" class="input" placeholder="Centro">
+            </div>
+          </div>
+        </div>
+        <button class="button" type="submit" style="margin-top:12px">Guardar</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
+

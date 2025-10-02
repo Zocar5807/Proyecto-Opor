@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin - Productos</title>
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <script type="module">
+    import { requireAuth } from '../assets/js/auth.js';
+    import { renderHeader, showToast } from '../assets/js/ui.js';
+    import { apiFetch } from '../assets/js/api.js';
+    requireAuth('admin');
+    window.addEventListener('DOMContentLoaded', async ()=>{
+      renderHeader({ active:'dashboard', isAdmin:true });
+      const tbody = document.querySelector('tbody');
+      const qInput = document.getElementById('q');
+      const pageSizeSel = document.getElementById('pageSize');
+      const prevBtn = document.getElementById('prev');
+      const nextBtn = document.getElementById('next');
+      const pageInfo = document.getElementById('pageInfo');
+
+      let all = [];
+      let filtered = [];
+      let page = 1;
+
+      function normalize(p){
+        return {
+          id: p.id,
+          nombre: p.nombre ?? p.name ?? '',
+          precio: Number(p.precio ?? p.price ?? 0),
+          descripcion: p.descripcion ?? '',
+          categoria: p.categoria ?? ''
+        };
+      }
+
+      function render(){
+        const pageSize = Number(pageSizeSel.value);
+        const start = (page-1)*pageSize;
+        const rows = filtered.slice(start, start+pageSize);
+        tbody.innerHTML = rows.map(p=>`<tr><td>${p.id}</td><td>${p.nombre}</td><td>$${p.precio.toLocaleString()}</td><td><a class=\"button\" href=\"admin_product_edit.html?id=${p.id}\">Editar</a></td></tr>`).join('');
+        const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+        pageInfo.textContent = `${page} / ${totalPages}`;
+        prevBtn.disabled = page<=1;
+        nextBtn.disabled = page>=totalPages;
+      }
+
+      function applyFilter(){
+        const q = (qInput.value||'').toLowerCase();
+        filtered = all.filter(p => `${p.id} ${p.nombre} ${p.descripcion} ${p.categoria}`.toLowerCase().includes(q));
+        page = 1;
+        render();
+      }
+
+      prevBtn.addEventListener('click', ()=>{ if(page>1){ page--; render(); }});
+      nextBtn.addEventListener('click', ()=>{ const totalPages=Math.ceil(filtered.length/Number(pageSizeSel.value))||1; if(page<totalPages){ page++; render(); }});
+      pageSizeSel.addEventListener('change', ()=>{ page=1; render(); });
+      qInput.addEventListener('input', ()=> applyFilter());
+
+      async function load(){
+        try{
+          const list = await apiFetch('productos','');
+          all = (list||[]).map(normalize);
+          filtered = all.slice();
+          render();
+        }catch{ tbody.innerHTML = '<tr><td colspan=4>No se pudieron cargar</td></tr>'; }
+      }
+      await load();
+    });
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <h1>Productos</h1>
+    <div class="card" style="margin-bottom:12px;display:flex;gap:12px;align-items:center">
+      <input id="q" class="input" placeholder="Buscar por nombre, descripción o categoría" style="flex:1">
+      <label for="pageSize" style="color:var(--color-text-muted)">Por página</label>
+      <select id="pageSize" class="input" style="width:120px">
+        <option value="5">5</option>
+        <option value="10" selected>10</option>
+        <option value="20">20</option>
+      </select>
+      <button id="prev" class="button" type="button">Anterior</button>
+      <span id="pageInfo" style="min-width:60px;text-align:center">1 / 1</span>
+      <button id="next" class="button" type="button">Siguiente</button>
+    </div>
+    <table class="table">
+      <thead><tr><th>ID</th><th>Nombre</th><th>Precio</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </main>
+</body>
+</html>
+

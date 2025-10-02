@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Perfil - La Oportunidad</title>
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <script type="module">
+    import { requireAuth, getUserId } from '../assets/js/auth.js';
+    import { renderHeader, showToast } from '../assets/js/ui.js';
+    import { apiFetch } from '../assets/js/api.js';
+    requireAuth();
+    window.addEventListener('DOMContentLoaded', async ()=>{
+      renderHeader();
+      const form = document.getElementById('profileForm');
+      const userId = getUserId();
+      try{
+        const me = await apiFetch('usuarios',`/${userId}`);
+        document.getElementById('nombres').value = me.nombres ?? '';
+        document.getElementById('apellidos').value = me.apellidos ?? '';
+        document.getElementById('username').value = me.username ?? '';
+        document.getElementById('email').value = me.email ?? '';
+        document.getElementById('telefono').value = me.telefono ?? '';
+        document.getElementById('direccion').value = me.direccion ?? '';
+      }catch{}
+      form.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const body = {
+          nombres: document.getElementById('nombres').value.trim(),
+          apellidos: document.getElementById('apellidos').value.trim(),
+          telefono: document.getElementById('telefono').value.trim(),
+          direccion: document.getElementById('direccion').value.trim()
+        };
+        const newPass = document.getElementById('password').value;
+        if (newPass) body.password = newPass;
+        try{
+          await apiFetch('usuarios',`/${userId}`,{ method:'PUT', body });
+          showToast('Perfil actualizado');
+          document.getElementById('password').value = '';
+        }catch{ showToast('No se pudo actualizar'); }
+      });
+    });
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <h1>Mi perfil</h1>
+    <section class="card">
+      <form id="profileForm">
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+          <div>
+            <label for="nombres">Nombres</label>
+            <input class="input" id="nombres" required>
+          </div>
+          <div>
+            <label for="apellidos">Apellidos</label>
+            <input class="input" id="apellidos" required>
+          </div>
+          <div>
+            <label for="username">Usuario</label>
+            <input class="input" id="username" disabled>
+          </div>
+          <div>
+            <label for="email">Correo</label>
+            <input class="input" id="email" type="email" disabled>
+          </div>
+          <div>
+            <label for="telefono">Teléfono</label>
+            <input class="input" id="telefono" placeholder="3001234567">
+          </div>
+          <div>
+            <label for="direccion">Dirección</label>
+            <input class="input" id="direccion" placeholder="Calle 123 #45-67">
+          </div>
+          <div>
+            <label for="password">Nueva contraseña</label>
+            <input class="input" id="password" type="password" placeholder="(opcional)">
+          </div>
+        </div>
+        <button class="button" type="submit" style="margin-top:12px">Guardar</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
+

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Checkout - La Oportunidad</title>
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <script type="module">
+    import { requireAuth } from '../assets/js/auth.js';
+    import { renderHeader, showToast } from '../assets/js/ui.js';
+    import { getCart, clearCart, computeTotals } from '../assets/js/cart.js';
+    import { apiFetch } from '../assets/js/api.js';
+    requireAuth();
+    window.addEventListener('DOMContentLoaded', ()=>{
+      renderHeader({ active:'products' });
+      const items = getCart();
+      const { total } = computeTotals(items);
+      document.getElementById('summary').textContent = `$${Number(total).toLocaleString()}`;
+      const form = document.querySelector('form');
+      form.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const address = document.getElementById('address').value.trim();
+        const payload = { address, items: items.map(i=>({ id: i.id, cantidad: i.quantity })) };
+        try{
+          const order = await apiFetch('ordenes','',{ method:'POST', body: payload });
+          clearCart();
+          showToast('Orden creada');
+          const orderId = order?.idOrden || order?.id_orden || order?.id || order?.insertId || order?.data?.idOrden || order?.data?.id_orden;
+          location.href = `order_detail.html?id=${orderId ?? ''}`;
+        }catch(err){
+          showToast('No se pudo crear la orden');
+        }
+      })
+    });
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <h1>Checkout</h1>
+    <section class="card">
+      <form>
+        <div>
+          <label for="address">Dirección de entrega</label>
+          <input class="input" id="address" required>
+        </div>
+        <p style="margin-top:12px">Total a pagar: <strong id="summary">$0</strong></p>
+        <button class="button" type="submit">Confirmar orden</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
+

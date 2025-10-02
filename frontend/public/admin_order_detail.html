@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin - Orden</title>
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <script type="module">
+    import { requireAuth } from '../assets/js/auth.js';
+    import { renderHeader, showToast } from '../assets/js/ui.js';
+    import { apiFetch } from '../assets/js/api.js';
+    requireAuth('admin');
+    function id(){ const u=new URL(location.href); return u.searchParams.get('id'); }
+    window.addEventListener('DOMContentLoaded', async ()=>{
+      renderHeader({ active:'dashboard', isAdmin:true });
+      const el = document.getElementById('detail');
+      const select = document.getElementById('status');
+      try{
+        const o = await apiFetch('ordenes',`/${id()}`);
+        const oid = o.id_orden ?? o.id;
+        el.innerHTML = `<div class=\"card\"><h2>Orden #${oid}</h2><p>Usuario: ${o.id_usuario ?? o.userId ?? ''}</p><h3>Items</h3><ul>${(o.productos||o.items||[]).map(i=>`<li>${i.nombre ?? i.name} x ${i.cantidad ?? i.quantity}</li>`).join('')}</ul></div>`;
+        select.value = (o.estado ?? o.status ?? 'pendiente').toLowerCase();
+      }catch{}
+      document.querySelector('form').addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        try{
+          await apiFetch('ordenes',`/${id()}`,{ method:'PATCH', body:{ status: select.value } });
+          showToast('Estado actualizado');
+        }catch{ showToast('No se pudo actualizar'); }
+      });
+    });
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <h1>Orden</h1>
+    <section id="detail" style="margin-bottom:16px"></section>
+    <section class="card">
+      <form>
+        <label for="status">Estado</label>
+        <select id="status" class="input">
+          <option value="pendiente">Pendiente</option>
+          <option value="enviado">Enviado</option>
+          <option value="completado">Completado</option>
+          <option value="cancelado">Cancelado</option>
+        </select>
+        <button class="button" type="submit" style="margin-top:12px">Guardar</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
+

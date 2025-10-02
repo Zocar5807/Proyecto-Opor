@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin - Solicitudes</title>
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <script type="module">
+    import { requireAuth } from '../assets/js/auth.js';
+    import { renderHeader } from '../assets/js/ui.js';
+    import { apiFetch } from '../assets/js/api.js';
+    requireAuth('admin');
+    window.addEventListener('DOMContentLoaded', async ()=>{
+      renderHeader({ active:'dashboard', isAdmin:true });
+      const tbody = document.querySelector('tbody');
+      const qInput = document.getElementById('q');
+      const pageSizeSel = document.getElementById('pageSize');
+      const prevBtn = document.getElementById('prev');
+      const nextBtn = document.getElementById('next');
+      const pageInfo = document.getElementById('pageInfo');
+
+      let all = [];
+      let filtered = [];
+      let page = 1;
+
+      function normalize(s){
+        return {
+          id: s.id,
+          usuario: s.usuario_id ?? s.userId ?? '',
+          articulo: s.nombre_producto ?? s.nombre ?? '—',
+          estado: s.estado ?? 'Pendiente'
+        };
+      }
+
+      function render(){
+        const pageSize = Number(pageSizeSel.value);
+        const start = (page-1)*pageSize;
+        const rows = filtered.slice(start, start+pageSize);
+        tbody.innerHTML = rows.map(s=>`<tr><td>${s.id}</td><td>${s.usuario}</td><td>${s.articulo}</td><td>${s.estado}</td><td><a class=\"button\" href=\"admin_request_detail.html?id=${s.id}\">Ver</a></td></tr>`).join('');
+        const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+        pageInfo.textContent = `${page} / ${totalPages}`;
+        prevBtn.disabled = page<=1;
+        nextBtn.disabled = page>=totalPages;
+      }
+
+      function applyFilter(){
+        const q = (qInput.value||'').toLowerCase();
+        filtered = all.filter(s => `${s.id} ${s.usuario} ${s.articulo} ${s.estado}`.toLowerCase().includes(q));
+        page = 1;
+        render();
+      }
+
+      prevBtn.addEventListener('click', ()=>{ if(page>1){ page--; render(); }});
+      nextBtn.addEventListener('click', ()=>{ const totalPages=Math.ceil(filtered.length/Number(pageSizeSel.value))||1; if(page<totalPages){ page++; render(); }});
+      pageSizeSel.addEventListener('change', ()=>{ page=1; render(); });
+      qInput.addEventListener('input', ()=> applyFilter());
+
+      try{
+        const list = await apiFetch('solicitudes','');
+        all = (list||[]).map(normalize);
+        filtered = all.slice();
+        render();
+      }catch{ tbody.innerHTML = '<tr><td colspan=5>No se pudieron cargar</td></tr>'; }
+    });
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <h1>Solicitudes</h1>
+    <div class="card" style="margin-bottom:12px;display:flex;gap:12px;align-items:center">
+      <input id="q" class="input" placeholder="Buscar por id, usuario, artículo o estado" style="flex:1">
+      <label for="pageSize" style="color:var(--color-text-muted)">Por página</label>
+      <select id="pageSize" class="input" style="width:120px">
+        <option value="5">5</option>
+        <option value="10" selected>10</option>
+        <option value="20">20</option>
+      </select>
+      <button id="prev" class="button" type="button">Anterior</button>
+      <span id="pageInfo" style="min-width:60px;text-align:center">1 / 1</span>
+      <button id="next" class="button" type="button">Siguiente</button>
+    </div>
+    <table class="table">
+      <thead><tr><th>ID</th><th>Usuario</th><th>Tipo</th><th>Estado</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </main>
+</body>
+</html>
+

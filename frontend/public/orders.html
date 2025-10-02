@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mis Órdenes - La Oportunidad</title>
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <script type="module">
+    import { requireAuth } from '../assets/js/auth.js';
+    import { renderHeader } from '../assets/js/ui.js';
+    import { apiFetch } from '../assets/js/api.js';
+    requireAuth();
+    window.addEventListener('DOMContentLoaded', async ()=>{
+      renderHeader();
+      const tbody = document.querySelector('tbody');
+      const fmt = (v)=>{ if(!v) return '—'; const d=new Date(v); return isNaN(d.getTime())? String(v) : d.toLocaleString(); };
+      try{
+        const list = await apiFetch('ordenes','?mine=true');
+        tbody.innerHTML = (list||[]).map(o=>{
+          const id = o.id_orden ?? o.id ?? '';
+          const fecha = o.fecha_creacion ?? o.fecha ?? o.createdAt;
+          const estado = o.estado ?? o.status ?? 'entregado';
+          return `
+          <tr>
+            <td>#${id}</td>
+            <td>${fmt(fecha)}</td>
+            <td>${estado}</td>
+            <td><a class=\"button\" href=\"order_detail.html?id=${id}\">Ver</a></td>
+          </tr>`;
+        }).join('');
+      }catch{
+        tbody.innerHTML = '<tr><td colspan=4>No se pudieron cargar las órdenes</td></tr>'
+      }
+    });
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <h1>Mis Órdenes</h1>
+    <table class="table">
+      <thead><tr><th>ID</th><th>Fecha</th><th>Estado</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </main>
+</body>
+</html>
+

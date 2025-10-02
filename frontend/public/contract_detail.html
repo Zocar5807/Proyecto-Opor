@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Detalle de Contrato - La Oportunidad</title>
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <script type="module">
+    import { requireAuth } from '../assets/js/auth.js';
+    import { renderHeader } from '../assets/js/ui.js';
+    import { apiFetch } from '../assets/js/api.js';
+    requireAuth();
+    function id(){ const u=new URL(location.href); return u.searchParams.get('id'); }
+    window.addEventListener('DOMContentLoaded', async ()=>{
+      renderHeader();
+      const el = document.getElementById('detail');
+      try{
+        const c = await apiFetch('contratos',`/${id()}`);
+        const fecha = c.fecha ?? c.con_fecha ?? null;
+        const fechaPlazo = c.con_fecha_plazo ?? c.fecha_plazo ?? null;
+        const monto = c.monto ?? c.con_valor ?? null;
+        const firmado = c.firmado ?? (c.con_firmado === 1);
+        const entregado = c.entregado ?? (c.con_producto_entregado === 1);
+        el.innerHTML = `
+          <div class=\"card\">
+            <h2>Contrato #${c.id}</h2>
+            <p>Estado: <strong>${c.estado ?? c.con_estado ?? '—'}</strong></p>
+            <p>Fecha: ${fecha ? new Date(fecha).toLocaleString() : '—'}</p>
+            <p>Monto: ${monto != null ? `$${Number(monto).toLocaleString()}` : '—'}</p>
+            <p>Firmado: ${firmado ? 'Sí' : 'No'}</p>
+            <p>Entregado: ${entregado ? 'Sí' : 'No'}</p>
+            <p>Fecha de plazo: ${fechaPlazo ? new Date(fechaPlazo).toLocaleDateString() : '—'}</p>
+          </div>`;
+      }catch{ el.textContent = 'No se pudo cargar el contrato'; }
+    });
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <h1>Detalle de contrato</h1>
+    <section id="detail"></section>
+  </main>
+</body>
+</html>
+

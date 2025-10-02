@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Producto - La Oportunidad</title>
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <script type="module">
+    import { requireAuth } from '../assets/js/auth.js';
+    import { renderHeader, showToast } from '../assets/js/ui.js';
+    import { apiFetch } from '../assets/js/api.js';
+    import { addToCart } from '../assets/js/cart.js';
+    requireAuth();
+    function id(){ const u=new URL(location.href); return u.searchParams.get('id'); }
+    window.addEventListener('DOMContentLoaded', async ()=>{
+      renderHeader({ active:'products' });
+      const el = document.getElementById('detail');
+      try{
+        const p = await apiFetch('productos',`/${id()}`);
+        el.innerHTML = `
+          <div class=\"card\">
+            <h1 style=\"margin-top:0\">${p.nombre ?? p.name}</h1>
+            <p style=\"color:var(--color-text-muted)\">${p.descripcion ?? ''}</p>
+            <p style=\"font-size:20px;font-weight:700\">$${Number(p.precio ?? p.price).toLocaleString()}</p>
+            <button id=\"add\" class=\"button\">Agregar al carrito</button>
+          </div>`;
+        document.getElementById('add').addEventListener('click', ()=>{
+          addToCart({ id: p.id, nombre: p.nombre ?? p.name, precio: p.precio ?? p.price }, 1);
+          showToast('Agregado al carrito');
+          location.href = 'cart.html';
+        });
+      }catch{ el.textContent='No se pudo cargar el producto'; }
+    });
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <section id="detail"></section>
+  </main>
+</body>
+</html>
+

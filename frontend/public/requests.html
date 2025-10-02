@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Solicitudes - La Oportunidad</title>
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <script type="module">
+    import { requireAuth } from '../assets/js/auth.js';
+    import { renderHeader, showToast } from '../assets/js/ui.js';
+    import { apiFetch } from '../assets/js/api.js';
+    requireAuth();
+    window.addEventListener('DOMContentLoaded', async ()=>{
+      renderHeader();
+      const tbody = document.querySelector('tbody');
+      const form = document.querySelector('form');
+      async function load(){
+        try{
+          const list = await apiFetch('solicitudes','?mine=true');
+          tbody.innerHTML = list.map(s=>`<tr><td>#${s.id}</td><td>${s.nombre_producto ?? s.nombreProducto ?? s.nombre ?? '—'}</td><td>${s.estado ?? 'Pendiente'}</td></tr>`).join('');
+        }catch{ tbody.innerHTML = '<tr><td colspan=3>No se pudieron cargar</td></tr>'; }
+      }
+      await load();
+      form.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const tipo = document.getElementById('type').value;
+        const nombre = document.getElementById('nombre').value.trim();
+        const descripcion = document.getElementById('descripcion').value.trim();
+        const categoria = document.getElementById('categoria').value.trim();
+        const imagen1 = document.getElementById('imagen1').value.trim();
+        const imagen2 = document.getElementById('imagen2').value.trim();
+        const imagen3 = document.getElementById('imagen3').value.trim();
+        try{
+          await apiFetch('solicitudes','',{ method:'POST', body:{ tipo, nombre, descripcion, categoria, imagen1, imagen2, imagen3 } });
+          showToast('Solicitud creada');
+          form.reset();
+          load();
+        }catch{ showToast('No se pudo crear la solicitud'); }
+      })
+    });
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <h1>Solicitudes de contrato</h1>
+    <section class="card" style="margin-bottom:16px">
+      <form>
+        <div>
+          <label for="type">Tipo</label>
+          <select id="type" class="input">
+            <option value="compra">Compra</option>
+            <option value="servicio">Servicio</option>
+          </select>
+        </div>
+        <div>
+          <label for="nombre">Nombre del artículo</label>
+          <input id="nombre" class="input" placeholder="Teléfono iPhone 12" required>
+        </div>
+        <div>
+          <label for="descripcion">Descripción</label>
+          <textarea id="descripcion" class="input" rows="3" placeholder="Buen estado, con cargador y caja, 128GB"></textarea>
+        </div>
+        <div>
+          <label for="categoria">Categoría</label>
+          <input id="categoria" class="input" placeholder="Electrónica">
+        </div>
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+          <div>
+            <label for="imagen1">Imagen 1 (URL)</label>
+            <input id="imagen1" class="input" placeholder="https://...jpg">
+          </div>
+          <div>
+            <label for="imagen2">Imagen 2 (URL)</label>
+            <input id="imagen2" class="input" placeholder="https://...jpg">
+          </div>
+          <div>
+            <label for="imagen3">Imagen 3 (URL)</label>
+            <input id="imagen3" class="input" placeholder="https://...jpg">
+          </div>
+        </div>
+        <button class="button" type="submit">Crear solicitud</button>
+      </form>
+    </section>
+    <table class="table">
+      <thead><tr><th>ID</th><th>Artículo</th><th>Estado</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </main>
+</body>
+</html>
+

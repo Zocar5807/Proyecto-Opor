@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin - Contrato</title>
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <script type="module">
+    import { requireAuth } from '../assets/js/auth.js';
+    import { renderHeader, showToast } from '../assets/js/ui.js';
+    import { apiFetch } from '../assets/js/api.js';
+    requireAuth('admin');
+    function id(){ const u=new URL(location.href); return u.searchParams.get('id'); }
+    window.addEventListener('DOMContentLoaded', async ()=>{
+      renderHeader({ active:'dashboard', isAdmin:true });
+      const el = document.getElementById('detail');
+      const select = document.getElementById('status');
+      const btnFirmar = document.getElementById('btnFirmar');
+      const btnEntregar = document.getElementById('btnEntregar');
+      const btnDesembolsar = document.getElementById('btnDesembolsar');
+      const montoInput = document.getElementById('montoDesembolso');
+      try{
+        const c = await apiFetch('contratos',`/${id()}`);
+        const estado = c.con_estado ?? c.estado ?? c.status ?? 'borrador';
+        const firmado = c.con_firmado === 1 || c.firmado === true;
+        const entregado = c.con_producto_entregado === 1 || c.entregado === true;
+        const fechaPlazo = c.con_fecha_plazo ?? c.fecha_plazo ?? null;
+        const monto = c.con_valor ?? c.monto ?? null;
+        const desembolsado = c.monto_desembolsado ?? null;
+        el.innerHTML = `<div class=\"card\">`
+          + `<h2>Contrato #${c.id}</h2>`
+          + `<p>Usuario: ${c.con_cliente ?? c.userId ?? ''}</p>`
+          + `<p>Estado: ${estado}</p>`
+          + `<p>Monto: ${monto != null ? `$${Number(monto).toLocaleString()}` : '—'}</p>`
+          + `<p>Firmado: ${firmado ? 'Sí' : 'No'}</p>`
+          + `<p>Entregado: ${entregado ? 'Sí' : 'No'}</p>`
+          + `<p>Fecha de plazo: ${fechaPlazo ? new Date(fechaPlazo).toLocaleDateString() : '—'}</p>`
+          + `${c.pdfUrl ? `<p><a class=\"button\" href=\"${c.pdfUrl}\" target=\"_blank\">PDF</a></p>` : ''}`
+          + `</div>`;
+        select.value = estado;
+      }catch{}
+      document.querySelector('form').addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        try{
+          await apiFetch('contratos',`/${id()}/estado`,{ method:'PATCH', body:{ nuevoEstado: select.value } });
+          showToast('Estado actualizado');
+        }catch{ showToast('No se pudo actualizar'); }
+      });
+
+      btnFirmar.addEventListener('click', async ()=>{
+        try{ await apiFetch('contratos',`/${id()}/firmar`,{ method:'PATCH' }); showToast('Contrato firmado'); location.reload(); }catch{ showToast('No se pudo firmar'); }
+      });
+
+      btnEntregar.addEventListener('click', async ()=>{
+        try{ await apiFetch('contratos',`/${id()}/entregar`,{ method:'PATCH' }); showToast('Producto entregado'); location.reload(); }catch{ showToast('No se pudo marcar entregado'); }
+      });
+
+      btnDesembolsar.addEventListener('click', async ()=>{
+        const monto = Number(montoInput.value);
+        if (!(monto>0)) { showToast('Ingresa un monto (>0)'); return; }
+        try{ await apiFetch('contratos',`/${id()}/desembolsar`,{ method:'PATCH', body:{ monto } }); showToast('Desembolso registrado'); location.reload(); }catch{ showToast('No se pudo registrar desembolso'); }
+      });
+    });
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <h1>Contrato</h1>
+    <section id="detail" style="margin-bottom:16px"></section>
+    <section class="card">
+      <form>
+        <label for="status">Estado</label>
+        <select id="status" class="input">
+          <option value="borrador">Borrador</option>
+          <option value="vigente">Vigente</option>
+          <option value="finalizado">Finalizado</option>
+          <option value="anulado">Anulado</option>
+        </select>
+        <button class="button" type="submit" style="margin-top:12px">Guardar</button>
+      </form>
+    </section>
+    <section class="card" style="margin-top:12px;display:flex;gap:12px;align-items:end;flex-wrap:wrap">
+      <div>
+        <button id="btnFirmar" class="button" type="button">Marcar como firmado</button>
+      </div>
+      <div>
+        <button id="btnEntregar" class="button" type="button">Marcar producto entregado</button>
+      </div>
+      <div>
+        <label for="montoDesembolso">Monto a desembolsar</label>
+        <input id="montoDesembolso" class="input" type="number" min="1" step="0.01" placeholder="0">
+        <button id="btnDesembolsar" class="button" type="button" style="margin-top:8px">Registrar desembolso</button>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
+
