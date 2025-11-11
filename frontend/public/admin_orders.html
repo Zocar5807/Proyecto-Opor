@@ -4,17 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin - Órdenes</title>
-  <link rel="stylesheet" href="../assets/css/base.css">
-  <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
-  <link rel="stylesheet" href="../assets/css/theme.css">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
   <script type="module">
-    import { requireAuth } from '../assets/js/auth.js';
-    import { renderHeader } from '../assets/js/ui.js';
-    import { apiFetch } from '../assets/js/api.js';
-    requireAuth('admin');
+    import { requireAuth } from '/assets/js/auth.js';
+    import { renderHeader } from '/assets/js/ui.js';
+    import { apiFetch } from '/assets/js/api.js';
+    requireAuth(['admin','empleado']);
     window.addEventListener('DOMContentLoaded', async ()=>{
-      renderHeader({ active:'dashboard', isAdmin:true });
+      renderHeader({ active:'orders' });
       const tbody = document.querySelector('tbody');
       const qInput = document.getElementById('q');
       const pageSizeSel = document.getElementById('pageSize');
@@ -27,19 +27,73 @@
       let page = 1;
 
       function normalize(o){
+        // Parsear productos si viene como string JSON
+        let productos = [];
+        if (o.productos) {
+          if (typeof o.productos === 'string') {
+            try {
+              productos = JSON.parse(o.productos);
+            } catch (e) {
+              productos = [];
+            }
+          } else if (Array.isArray(o.productos)) {
+            productos = o.productos;
+          }
+        }
+        
+        // Obtener el primer producto para mostrar en la lista
+        const primerProducto = productos.length > 0 ? productos[0] : null;
+        const nombreProducto = primerProducto?.nombre || primerProducto?.name || 'Sin productos';
+        const cantidadProductos = productos.length;
+        
         return {
           id: o.id_orden ?? o.id,
-          usuario: o.id_usuario ?? o.userId ?? '',
+          id_usuario: o.id_usuario ?? o.userId ?? '',
+          productos: productos,
+          nombreProducto: nombreProducto,
+          cantidadProductos: cantidadProductos,
           estado: o.estado ?? o.status ?? '—',
-          fecha: o.fecha_creacion ?? o.fecha ?? o.createdAt ?? null
+          fecha: o.fecha_creacion ?? o.fecha ?? o.createdAt ?? null,
+          total: o.total ?? o.monto_total ?? 0
         };
+      }
+
+      function getEstadoBadge(estado) {
+        const estadoMap = {
+          'pendiente': { text: 'Pendiente', class: 'badge--warning' },
+          'en_proceso': { text: 'En Proceso', class: 'badge--info' },
+          'enviado': { text: 'Enviado', class: 'badge--secondary' },
+          'completado': { text: 'Completado', class: 'badge--success' },
+          'cancelado': { text: 'Cancelado', class: 'badge--error' }
+        };
+        const estadoLower = (estado || '').toLowerCase();
+        const estadoInfo = estadoMap[estadoLower] || { text: estado || '—', class: 'badge--secondary' };
+        return `<span class="badge ${estadoInfo.class}">${estadoInfo.text}</span>`;
       }
 
       function render(){
         const pageSize = Number(pageSizeSel.value);
         const start = (page-1)*pageSize;
         const rows = filtered.slice(start, start+pageSize);
-        tbody.innerHTML = rows.map(o=>`<tr><td>${o.id}</td><td>${o.usuario}</td><td>${o.estado}</td><td><a class=\"button\" href=\"admin_order_detail.html?id=${o.id}\">Ver</a></td></tr>`).join('');
+        
+        if (rows.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:var(--spacing-8);color:var(--color-text-muted);">No se encontraron órdenes</td></tr>`;
+        } else {
+          tbody.innerHTML = rows.map(o=>`
+            <tr>
+              <td><strong>#${o.id}</strong></td>
+              <td>
+                <div style="display:flex;flex-direction:column;gap:var(--spacing-1);">
+                  <span style="font-weight:var(--font-weight-semibold);color:var(--color-text);">${o.nombreProducto}</span>
+                  ${o.cantidadProductos > 1 ? `<span style="font-size:var(--font-size-xs);color:var(--color-text-muted);">+${o.cantidadProductos - 1} producto${o.cantidadProductos - 1 > 1 ? 's' : ''} más</span>` : ''}
+                </div>
+              </td>
+              <td>${getEstadoBadge(o.estado)}</td>
+              <td><a class="button button--sm" href="admin_order_detail.html?id=${o.id}">Ver</a></td>
+            </tr>
+          `).join('');
+        }
+        
         const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
         pageInfo.textContent = `${page} / ${totalPages}`;
         prevBtn.disabled = page<=1;
@@ -48,8 +102,12 @@
 
       function applyFilter(){
         const q = (qInput.value||'').toLowerCase();
-        filtered = all.filter(o => `${o.id} ${o.usuario} ${o.estado}`.toLowerCase().includes(q));
+        filtered = all.filter(o => {
+          const searchText = `${o.id} ${o.nombreProducto} ${o.estado} ${o.id_usuario}`.toLowerCase();
+          return searchText.includes(q);
+        });
         page = 1;
+        document.getElementById('totalOrders').textContent = filtered.length;
         render();
       }
 
@@ -62,8 +120,11 @@
         const list = await apiFetch('ordenes','');
         all = (list||[]).map(normalize);
         filtered = all.slice();
+        document.getElementById('totalOrders').textContent = filtered.length;
         render();
-      }catch{ tbody.innerHTML = '<tr><td colspan=4>No se pudieron cargar</td></tr>'; }
+      }catch{ 
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:var(--spacing-8);color:var(--color-error);">No se pudieron cargar las órdenes</td></tr>'; 
+      }
     });
   </script>
 </head>
@@ -72,7 +133,7 @@
   <main class="container">
     <h1>Órdenes</h1>
     <div class="card" style="margin-bottom:12px;display:flex;gap:12px;align-items:center">
-      <input id="q" class="input" placeholder="Buscar por id, usuario o estado" style="flex:1">
+      <input id="q" class="input" placeholder="Buscar por id, producto o estado" style="flex:1">
       <label for="pageSize" style="color:var(--color-text-muted)">Por página</label>
       <select id="pageSize" class="input" style="width:120px">
         <option value="5">5</option>
@@ -83,10 +144,27 @@
       <span id="pageInfo" style="min-width:60px;text-align:center">1 / 1</span>
       <button id="next" class="button" type="button">Siguiente</button>
     </div>
-    <table class="table">
-      <thead><tr><th>ID</th><th>Usuario</th><th>Estado</th><th></th></tr></thead>
-      <tbody></tbody>
-    </table>
+    <section class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:var(--spacing-5);border-bottom:1px solid var(--color-border-light);">
+        <h2 style="margin:0;font-size:var(--font-size-xl);">Lista de Órdenes</h2>
+        <p style="margin:var(--spacing-2) 0 0;color:var(--color-text-muted);font-size:var(--font-size-sm);">
+          Total: <strong id="totalOrders" style="color:var(--color-primary);">0</strong> órdenes
+        </p>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Producto</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
   </main>
 </body>
 </html>

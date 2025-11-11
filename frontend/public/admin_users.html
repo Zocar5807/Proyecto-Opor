@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin - Usuarios</title>
-  <link rel="stylesheet" href="../assets/css/base.css">
-  <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
-  <link rel="stylesheet" href="../assets/css/theme.css">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
   <script type="module">
-    import { requireAuth } from '../assets/js/auth.js';
-    import { renderHeader, showToast } from '../assets/js/ui.js';
-    import { apiFetch } from '../assets/js/api.js';
+    import { requireAuth } from '/assets/js/auth.js';
+    import { renderHeader, showToast } from '/assets/js/ui.js';
+    import { apiFetch } from '/assets/js/api.js';
     requireAuth('admin');
     window.addEventListener('DOMContentLoaded', async ()=>{
       renderHeader({ active:'dashboard', isAdmin:true });
@@ -21,6 +21,7 @@
       const prevBtn = document.getElementById('prev');
       const nextBtn = document.getElementById('next');
       const pageInfo = document.getElementById('pageInfo');
+      const createForm = document.getElementById('createEmployeeForm');
 
       let all = [];
       let filtered = [];
@@ -45,14 +46,39 @@
           return s.includes(q);
         });
         page = 1;
+        document.getElementById('totalUsers').textContent = filtered.length;
         render();
+      }
+
+      function getRoleBadge(rol) {
+        const roleMap = {
+          'admin': { text: 'Administrador', class: 'badge--error' },
+          'empleado': { text: 'Empleado', class: 'badge--info' },
+          'cliente': { text: 'Cliente', class: 'badge--secondary' }
+        };
+        const roleInfo = roleMap[rol?.toLowerCase()] || { text: rol || 'N/A', class: 'badge--secondary' };
+        return `<span class="badge ${roleInfo.class}">${roleInfo.text}</span>`;
       }
 
       function render(){
         pageSize = Number(pageSizeSel.value);
         const start = (page-1)*pageSize;
         const rows = filtered.slice(start, start+pageSize);
-        tbody.innerHTML = rows.map(u=>`<tr><td>${u.id}</td><td>${u.nombre}</td><td>${u.email}</td><td>${u.rol}</td><td><a class=\"button\" href=\"admin_user_detail.html?id=${u.id}\">Ver</a></td></tr>`).join('');
+        
+        if (rows.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:var(--spacing-8);color:var(--color-text-muted);">No se encontraron usuarios</td></tr>`;
+        } else {
+          tbody.innerHTML = rows.map(u=>`
+            <tr>
+              <td>${u.id}</td>
+              <td><strong>${u.nombre || 'Sin nombre'}</strong></td>
+              <td>${u.email || '<span style="color:var(--color-text-muted);font-style:italic;">Sin email</span>'}</td>
+              <td>${getRoleBadge(u.rol)}</td>
+              <td><a class="button button--sm" href="admin_user_detail.html?id=${u.id}">Ver</a></td>
+            </tr>
+          `).join('');
+        }
+        
         const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
         pageInfo.textContent = `${page} / ${totalPages}`;
         prevBtn.disabled = page<=1;
@@ -64,13 +90,45 @@
       pageSizeSel.addEventListener('change', ()=>{ page=1; render(); });
       qInput.addEventListener('input', ()=>{ applyFilter(); });
 
+      createForm.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const body = {
+          nombres: document.getElementById('newName').value.trim(),
+          apellidos: document.getElementById('newLastName').value.trim(),
+          cedula: document.getElementById('newCedula').value.trim(),
+          username: document.getElementById('newUsername').value.trim(),
+          password: document.getElementById('newPassword').value,
+          email: document.getElementById('newEmail').value.trim(),
+          telefono: document.getElementById('newPhone').value.trim(),
+          direccion: document.getElementById('newAddress').value.trim()
+        };
+
+        if (!body.nombres || !body.apellidos || !body.username || !body.password || !body.cedula) {
+          showToast('Completa los campos obligatorios');
+          return;
+        }
+
+        try {
+          await apiFetch('usuarios','/empleados',{ method:'POST', body });
+          showToast('Empleado creado correctamente');
+          createForm.reset();
+          await load();
+        } catch (err) {
+          console.error('Error creando empleado', err);
+          showToast('No se pudo crear el empleado');
+        }
+      });
+
       async function load(){
         try{
           const list = await apiFetch('usuarios','/');
           all = list.map(normalize);
           filtered = all.slice();
+          document.getElementById('totalUsers').textContent = filtered.length;
           render();
-        }catch{ tbody.innerHTML = '<tr><td colspan=5>No se pudieron cargar</td></tr>'; }
+        }catch{ 
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:var(--spacing-8);color:var(--color-error);">No se pudieron cargar los usuarios</td></tr>'; 
+        }
       }
       await load();
     });
@@ -92,10 +150,68 @@
       <span id="pageInfo" style="min-width:60px;text-align:center">1 / 1</span>
       <button id="next" class="button" type="button">Siguiente</button>
     </div>
-    <table class="table">
-      <thead><tr><th>ID</th><th>Nombre</th><th>Email</th><th>Rol</th><th></th></tr></thead>
-      <tbody></tbody>
-    </table>
+    <section class="card" style="margin-bottom: var(--spacing-lg);">
+      <h2 style="margin-top:0">Registrar nuevo empleado</h2>
+      <form id="createEmployeeForm" class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--spacing-md);align-items:end;">
+        <div>
+          <label for="newCedula">Cédula *</label>
+          <input class="input" id="newCedula" required>
+        </div>
+        <div>
+          <label for="newName">Nombres *</label>
+          <input class="input" id="newName" required>
+        </div>
+        <div>
+          <label for="newLastName">Apellidos *</label>
+          <input class="input" id="newLastName" required>
+        </div>
+        <div>
+          <label for="newUsername">Usuario *</label>
+          <input class="input" id="newUsername" required>
+        </div>
+        <div>
+          <label for="newEmail">Correo</label>
+          <input class="input" id="newEmail" type="email">
+        </div>
+        <div>
+          <label for="newPhone">Teléfono</label>
+          <input class="input" id="newPhone">
+        </div>
+        <div>
+          <label for="newAddress">Dirección</label>
+          <input class="input" id="newAddress">
+        </div>
+        <div>
+          <label for="newPassword">Contraseña temporal *</label>
+          <input class="input" id="newPassword" type="password" required>
+        </div>
+        <div style="display:flex;gap:var(--spacing-sm)">
+          <button class="button" type="submit">Crear empleado</button>
+        </div>
+      </form>
+    </section>
+    <section class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:var(--spacing-5);border-bottom:1px solid var(--color-border-light);">
+        <h2 style="margin:0;font-size:var(--font-size-xl);">Lista de Usuarios</h2>
+        <p style="margin:var(--spacing-2) 0 0;color:var(--color-text-muted);font-size:var(--font-size-sm);">
+          Total: <strong id="totalUsers" style="color:var(--color-primary);">0</strong> usuarios
+        </p>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>Rol</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
   </main>
 </body>
 </html>

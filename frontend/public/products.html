@@ -4,15 +4,116 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Productos - La Oportunidad</title>
-  <link rel="stylesheet" href="../assets/css/base.css">
-  <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
-  <link rel="stylesheet" href="../assets/css/theme.css">
-  <link rel="icon" href="../assets/img/logo.svg">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
+  <link rel="icon" href="/assets/img/logo.svg">
+  <script type="module" src="/assets/js/products.js"></script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <div class="page-header">
+      <h1 class="page-title">Productos</h1>
+      <div class="badge badge--primary" id="productCount">0 productos</div>
+    </div>
+
+    <section class="search-filters-section">
+      <div class="search-filters-section__header">
+        <h2 class="search-filters-section__title">Buscar y Filtrar</h2>
+      </div>
+      
+      <div class="search-bar">
+        <svg class="search-bar-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 17C13.4183 17 17 13.4183 17 9C17 4.58172 13.4183 1 9 1C4.58172 1 1 4.58172 1 9C1 13.4183 4.58172 17 9 17Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M19 19L14.65 14.65" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <input 
+          type="text" 
+          class="input" 
+          id="searchInput" 
+          placeholder="Buscar productos por nombre o descripción..."
+          autocomplete="off"
+        >
+      </div>
+
+      <div class="filters" id="filtersContainer">
+        <div class="filters-group">
+          <label class="filter-label">Ordenar por:</label>
+          <button type="button" class="filter-chip active" data-filter="all">
+            Todos
+          </button>
+          <button type="button" class="filter-chip" data-filter="precio-asc">
+            Precio: Menor a Mayor
+          </button>
+          <button type="button" class="filter-chip" data-filter="precio-desc">
+            Precio: Mayor a Menor
+          </button>
+          <button type="button" class="filter-chip" data-filter="nombre-asc">
+            Nombre: A-Z
+          </button>
+          <button type="button" class="filter-chip" data-filter="nombre-desc">
+            Nombre: Z-A
+          </button>
+        </div>
+        
+        <div class="filters-group">
+          <label class="filter-label">Categoría:</label>
+          <select class="input filter-select" id="categoriaFilter">
+            <option value="">Todas las categorías</option>
+          </select>
+        </div>
+        
+        <div class="filters-group">
+          <label class="filter-label">Estado:</label>
+          <select class="input filter-select" id="estadoFilter">
+            <option value="">Todos los estados</option>
+            <option value="a_venta">A la venta</option>
+            <option value="garantia">En garantía</option>
+          </select>
+        </div>
+        
+        <div class="filters-group">
+          <label class="filter-label">Sucursal:</label>
+          <select class="input filter-select" id="sucursalFilter">
+            <option value="">Todas las sucursales</option>
+          </select>
+        </div>
+        
+        <div class="filters-group">
+          <label class="filter-label">Precio:</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="number" class="input" id="precioMin" placeholder="Mín" style="width:100px" min="0">
+            <span>-</span>
+            <input type="number" class="input" id="precioMax" placeholder="Máx" style="width:100px" min="0">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="loadingState" class="empty-state" style="display: none;">
+      <div class="spinner" style="margin: 0 auto;"></div>
+      <p class="empty-state-text">Cargando productos...</p>
+    </div>
+
+    <div id="emptyState" class="empty-state" style="display: none;">
+      <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 7L12 3L4 7M20 7L12 11M20 7V17L12 21M12 11L4 7M12 11V21M4 7V17L12 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <h3 class="empty-state-title">No se encontraron productos</h3>
+      <p class="empty-state-text">Intenta ajustar tus filtros de búsqueda</p>
+    </div>
+
+    <section class="grid grid--cards" id="productsGrid"></section>
+  </main>
+</body>
+</html>
+
   <script type="module">
-    import { requireAuth } from '../assets/js/auth.js';
-    import { apiFetch } from '../assets/js/api.js';
-    import { renderHeader } from '../assets/js/ui.js';
+    import { requireAuth } from '/assets/js/auth.js';
+    import { apiFetch } from '/assets/js/api.js';
+    import { renderHeader } from '/assets/js/ui.js';
     requireAuth();
     window.addEventListener('DOMContentLoaded', async ()=>{
       renderHeader({ active:'products' });

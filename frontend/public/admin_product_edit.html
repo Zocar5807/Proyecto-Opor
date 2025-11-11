@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin - Producto</title>
-  <link rel="stylesheet" href="../assets/css/base.css">
-  <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
-  <link rel="stylesheet" href="../assets/css/theme.css">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
   <script type="module">
-    import { requireAuth } from '../assets/js/auth.js';
-    import { renderHeader, showToast } from '../assets/js/ui.js';
-    import { apiFetch } from '../assets/js/api.js';
+    import { requireAuth } from '/assets/js/auth.js';
+    import { renderHeader, showToast } from '/assets/js/ui.js';
+    import { apiFetch } from '/assets/js/api.js';
     requireAuth('admin');
     function id(){ const u=new URL(location.href); return u.searchParams.get('id'); }
     window.addEventListener('DOMContentLoaded', async ()=>{

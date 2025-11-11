@@ -3,83 +3,624 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Registro - La Oportunidad</title>
-  <link rel="stylesheet" href="../assets/css/base.css">
-  <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
-  <link rel="stylesheet" href="../assets/css/theme.css">
+  <title>Crear cuenta - La Oportunidad</title>
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
+  <link rel="icon" href="/assets/img/logo.svg">
+  <style>
+    /* Define missing CSS variables for the new design */
+    :root {
+      --gradient-primary: linear-gradient(135deg, var(--color-primary-400) 0%, var(--color-primary-600) 100%);
+      --color-text-secondary: var(--color-text-secondary);
+    }
+
+    .auth-container {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--color-bg);
+    }
+
+    .auth-brand {
+      background: var(--gradient-primary);
+      padding: 4rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .auth-brand::before {
+      content: '';
+      position: absolute;
+      width: 400px;
+      height: 400px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 50%;
+      top: -200px;
+      right: -100px;
+    }
+
+    .auth-brand::after {
+      content: '';
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 50%;
+      bottom: -150px;
+      left: -50px;
+    }
+
+    .auth-brand__content {
+      position: relative;
+      z-index: 1;
+      max-width: 480px;
+    }
+
+    .auth-brand__logo {
+      height: 64px;
+      filter: brightness(0) invert(1);
+      margin-bottom: 2rem;
+      animation: bounceIn 1s ease-out;
+    }
+
+    .auth-brand h1 {
+      color: #fff;
+      margin-bottom: 1rem;
+      font-size: 2.5rem;
+      font-weight: 800;
+    }
+
+    .auth-brand p {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 1.125rem;
+      line-height: 1.7;
+      margin-bottom: 2rem;
+    }
+
+    .auth-features {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      margin-top: 3rem;
+      text-align: left;
+    }
+
+    .auth-feature {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .auth-feature__icon {
+      width: 48px;
+      height: 48px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    .auth-feature h3 {
+      color: #fff;
+      margin: 0 0 0.25rem;
+      font-size: 1.125rem;
+    }
+
+    .auth-feature p {
+      color: rgba(255, 255, 255, 0.8);
+      margin: 0;
+      font-size: 0.9375rem;
+    }
+
+    .auth-form-container {
+      padding: 4rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow-y: auto;
+    }
+
+    .auth-form-wrapper {
+      max-width: 520px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .auth-form__header {
+      margin-bottom: 2rem;
+    }
+
+    .auth-form__title {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: var(--color-text);
+      font-weight: 700;
+    }
+
+    .auth-form__subtitle {
+      color: var(--color-text-muted);
+      font-size: 1rem;
+    }
+
+    .progress-indicator {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 2rem;
+    }
+
+    .progress-step {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #E5E9E7;
+      transition: background var(--transition-fast);
+    }
+
+    .progress-step.active {
+      background: var(--color-primary);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group--full {
+      grid-column: 1 / -1;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: var(--color-text);
+    }
+
+    .password-strength {
+      margin-top: 0.5rem;
+      display: flex;
+      gap: 4px;
+    }
+
+    .password-strength__bar {
+      flex: 1;
+      height: 4px;
+      background: #E5E9E7;
+      border-radius: 999px;
+      transition: background var(--transition-fast);
+    }
+
+    .password-strength__bar.active {
+      background: var(--color-primary);
+    }
+
+    .password-strength__bar.active.weak {
+      background: var(--color-error);
+    }
+
+    .password-strength__bar.active.medium {
+      background: var(--color-warning);
+    }
+
+    .password-strength__bar.active.strong {
+      background: var(--color-success);
+    }
+
+    .password-strength__label {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+      margin-top: 0.25rem;
+      font-weight: 600;
+    }
+
+    .checkbox-wrapper {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin: 1.5rem 0;
+    }
+
+    .checkbox-wrapper input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--color-primary);
+      cursor: pointer;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .checkbox-wrapper label {
+      margin: 0;
+      cursor: pointer;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      color: var(--color-text-secondary);
+    }
+
+    .checkbox-wrapper label a {
+      color: var(--color-accent);
+      font-weight: 600;
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      margin-bottom: 1.5rem;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+
+    .alert--error {
+      background: rgba(255, 59, 48, 0.1);
+      color: var(--color-error);
+      border: 1px solid rgba(255, 59, 48, 0.2);
+    }
+
+    .alert--success {
+      background: rgba(52, 199, 89, 0.1);
+      color: var(--color-success);
+      border: 1px solid rgba(52, 199, 89, 0.2);
+    }
+
+    .alert.show {
+      display: flex;
+    }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid #E5E9E7;
+    }
+
+    .auth-footer p {
+      color: var(--color-text-muted);
+      margin-bottom: 0;
+    }
+
+    .auth-footer a {
+      color: var(--color-accent);
+      font-weight: 600;
+      margin-left: 0.25rem;
+    }
+
+    @keyframes bounceIn {
+      0% {
+        opacity: 0;
+        transform: scale(0.3);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.05);
+      }
+      70% {
+        transform: scale(0.9);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @media (max-width: 968px) {
+      .auth-container {
+        grid-template-columns: 1fr;
+      }
+
+      .auth-brand {
+        display: none;
+      }
+
+      .auth-form-container {
+        padding: 2rem 1.5rem;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
   <script type="module">
-    import { apiFetch } from '../assets/js/api.js';
-    import { saveSession } from '../assets/js/auth.js';
-    import { showToast } from '../assets/js/ui.js';
-    function parseJwt(token){ try { return JSON.parse(atob(token.split('.')[1])); } catch { return {}; } }
-    window.addEventListener('DOMContentLoaded', ()=>{
-      const form = document.querySelector('form');
-      form.addEventListener('submit', async (e)=>{
+    import { apiFetch } from '/assets/js/api.js';
+    import { saveSession } from '/assets/js/auth.js';
+    import { showToast } from '/assets/js/ui.js';
+
+    function parseJwt(token) {
+      try { return JSON.parse(atob(token.split('.')[1])); } catch { return {}; }
+    }
+
+    function calculatePasswordStrength(password) {
+      let strength = 0;
+      if (password.length >= 8) strength++;
+      if (password.length >= 12) strength++;
+      if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+      if (/\d/.test(password)) strength++;
+      if (/[^a-zA-Z0-9]/.test(password)) strength++;
+      return Math.min(strength, 4);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('registerForm');
+      const passwordInput = document.getElementById('password');
+      const strengthBars = document.querySelectorAll('.password-strength__bar');
+      const strengthLabel = document.getElementById('strengthLabel');
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const alertBox = document.getElementById('alertBox');
+
+      passwordInput?.addEventListener('input', (e) => {
+        const strength = calculatePasswordStrength(e.target.value);
+        const labels = ['', 'Débil', 'Regular', 'Buena', 'Fuerte'];
+        const classes = ['', 'weak', 'medium', 'medium', 'strong'];
+
+        strengthBars.forEach((bar, index) => {
+          bar.classList.toggle('active', index < strength);
+          bar.classList.remove('weak', 'medium', 'strong');
+          if (index < strength && classes[strength]) {
+            bar.classList.add(classes[strength]);
+          }
+        });
+
+        strengthLabel.textContent = labels[strength] || '';
+      });
+
+      form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const cedula = document.getElementById('cedula').value.trim();
-        const nombres = document.getElementById('nombres').value.trim();
-        const apellidos = document.getElementById('apellidos').value.trim();
-        const username = document.getElementById('username').value.trim();
-        const password = document.getElementById('password').value;
-        const telefono = document.getElementById('telefono').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const direccion = document.getElementById('direccion').value.trim();
-        try{
-          await apiFetch('usuarios','/',{ method:'POST', body:{ cedula, nombres, apellidos, username, password, telefono, email, direccion } });
-          const data = await apiFetch('usuarios','/login',{ method:'POST', body:{ username, password } });
-          const payload = parseJwt(data.token);
-          const role = payload.rol || payload.role || 'cliente';
-          saveSession({ token: data.token, role });
-          showToast('Registro exitoso');
-          if (role === 'admin') location.href = 'admin_dashboard.html'; else location.href = 'products.html';
-        }catch{ showToast('No se pudo registrar'); }
+
+        alertBox.classList.remove('show', 'alert--error', 'alert--success');
+
+        const formData = {
+          cedula: document.getElementById('cedula').value.trim(),
+          nombres: document.getElementById('nombres').value.trim(),
+          apellidos: document.getElementById('apellidos').value.trim(),
+          username: document.getElementById('username').value.trim(),
+          email: document.getElementById('email').value.trim(),
+          telefono: document.getElementById('telefono').value.trim(),
+          direccion: document.getElementById('direccion').value.trim(),
+          ciudad: document.getElementById('ciudad').value.trim(),
+          password: passwordInput.value,
+          categoriaPreferida: document.getElementById('categoriaPreferida').value,
+          contactoPreferido: Array.from(document.querySelectorAll('input[name="prefContacto"]:checked')).map(el => el.value),
+          boletin: document.getElementById('boletin').checked
+        };
+
+        const preferencias = {
+          contacto: formData.contactoPreferido,
+          categoriaFavorita: formData.categoriaPreferida || null,
+          boletin: formData.boletin
+        };
+
+        if (formData.password.length < 8) {
+          alertBox.classList.add('alert--error', 'show');
+          alertBox.textContent = 'La contraseña debe tener al menos 8 caracteres';
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Creando cuenta...';
+
+        try {
+          await apiFetch('usuarios', '/', {
+            method: 'POST',
+            body: {
+              cedula: formData.cedula,
+              nombres: formData.nombres,
+              apellidos: formData.apellidos,
+              username: formData.username,
+              email: formData.email,
+              telefono: formData.telefono,
+              direccion: formData.direccion,
+              ciudad: formData.ciudad,
+              password: formData.password,
+              preferencias: preferencias
+            }
+          });
+
+          try {
+            const loginData = await apiFetch('usuarios', '/login', {
+              method: 'POST',
+              body: { username: formData.username, password: formData.password }
+            });
+
+            const payload = parseJwt(loginData.token);
+            const role = payload.rol || payload.role || 'cliente';
+            saveSession({ token: loginData.token, role });
+
+            alertBox.classList.add('alert--success', 'show');
+            alertBox.textContent = '¡Cuenta creada exitosamente! Redirigiendo...';
+
+            setTimeout(() => {
+              if (role === 'admin') {
+                location.href = 'admin_dashboard.html';
+              } else if (role === 'empleado') {
+                location.href = 'employee_dashboard.html';
+              } else {
+                location.href = 'products.html';
+              }
+            }, 1000);
+          } catch (loginErr) {
+            alertBox.classList.add('alert--success', 'show');
+            alertBox.textContent = 'Cuenta creada. Redirigiendo al inicio de sesión...';
+            setTimeout(() => {
+              location.href = 'login.html';
+            }, 1500);
+          }
+        } catch (err) {
+          alertBox.classList.add('alert--error', 'show');
+          alertBox.textContent = 'No se pudo crear la cuenta. Verifica los datos e intenta nuevamente.';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Crear cuenta';
+        }
       });
     });
   </script>
 </head>
 <body>
-  <main class="container">
-    <section class="card" style="max-width:420px;margin:48px auto">
-      <img src="../assets/img/logo.svg" alt="La Oportunidad" style="height:40px;margin-bottom:16px">
-      <h1>Crea tu cuenta</h1>
-      <form>
-        <div>
-          <label for="cedula">Cédula</label>
-          <input class="input" id="cedula" required>
+  <div class="auth-container">
+    <div class="auth-brand">
+      <div class="auth-brand__content">
+        <img src="/assets/img/logo.svg" alt="La Oportunidad" class="auth-brand__logo">
+        <h1>Únete a La Oportunidad</h1>
+        <p>Crea tu cuenta y descubre cómo podemos ayudarte a alcanzar tus metas financieras.</p>
+        
+        <div class="auth-features">
+          <div class="auth-feature">
+            <div class="auth-feature__icon">⚡</div>
+            <div>
+              <h3>Registro rápido</h3>
+              <p>Completa el formulario en menos de 2 minutos</p>
+            </div>
+          </div>
+          <div class="auth-feature">
+            <div class="auth-feature__icon">🔒</div>
+            <div>
+              <h3>Datos protegidos</h3>
+              <p>Tu información está encriptada y segura</p>
+            </div>
+          </div>
+          <div class="auth-feature">
+            <div class="auth-feature__icon">🎯</div>
+            <div>
+              <h3>Acceso inmediato</h3>
+              <p>Comienza a usar la plataforma al instante</p>
+            </div>
+          </div>
         </div>
-        <div>
-          <label for="nombres">Nombres</label>
-          <input class="input" id="nombres" required>
+      </div>
+    </div>
+
+    <div class="auth-form-container">
+      <div class="auth-form-wrapper">
+        <div class="auth-form__header">
+          <div class="progress-indicator">
+            <div class="progress-step active"></div>
+            <div class="progress-step"></div>
+            <div class="progress-step"></div>
+          </div>
+          <h2 class="auth-form__title">Crear cuenta</h2>
+          <p class="auth-form__subtitle">Completa tus datos para comenzar</p>
         </div>
-        <div>
-          <label for="apellidos">Apellidos</label>
-          <input class="input" id="apellidos" required>
+
+        <div id="alertBox" class="alert"></div>
+
+        <form id="registerForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="cedula">Cédula *</label>
+              <input class="input" id="cedula" type="text" placeholder="1234567890" required>
+            </div>
+
+            <div class="form-group">
+              <label for="username">Usuario *</label>
+              <input class="input" id="username" type="text" placeholder="usuario123" required autocomplete="username">
+            </div>
+
+            <div class="form-group">
+              <label for="nombres">Nombres *</label>
+              <input class="input" id="nombres" type="text" placeholder="Juan Carlos" required>
+            </div>
+
+            <div class="form-group">
+              <label for="apellidos">Apellidos *</label>
+              <input class="input" id="apellidos" type="text" placeholder="García López" required>
+            </div>
+
+            <div class="form-group form-group--full">
+              <label for="email">Correo electrónico</label>
+              <input class="input" id="email" type="email" placeholder="correo@ejemplo.com" autocomplete="email">
+            </div>
+
+            <div class="form-group">
+              <label for="telefono">Teléfono</label>
+              <input class="input" id="telefono" type="tel" placeholder="3001234567" autocomplete="tel">
+            </div>
+
+            <div class="form-group">
+              <label for="direccion">Dirección</label>
+              <input class="input" id="direccion" type="text" placeholder="Calle 123 #45-67" autocomplete="street-address">
+            </div>
+
+            <div class="form-group">
+              <label for="ciudad">Ciudad</label>
+              <input class="input" id="ciudad" type="text" placeholder="Ej. Cali">
+            </div>
+
+            <div class="form-group">
+              <label for="categoriaPreferida">Categoría favorita</label>
+              <select class="input" id="categoriaPreferida">
+                <option value="">Selecciona una opción</option>
+                <option value="joyas">Joyas</option>
+                <option value="electronica">Electrónica</option>
+                <option value="herramientas">Herramientas</option>
+                <option value="hogar">Hogar</option>
+              </select>
+            </div>
+
+            <div class="form-group form-group--full">
+              <label for="password">Contraseña *</label>
+              <input class="input" id="password" type="password" placeholder="Mínimo 8 caracteres" required autocomplete="new-password">
+              <div class="password-strength">
+                <div class="password-strength__bar"></div>
+                <div class="password-strength__bar"></div>
+                <div class="password-strength__bar"></div>
+                <div class="password-strength__bar"></div>
+              </div>
+              <div class="password-strength__label" id="strengthLabel"></div>
+            </div>
+          </div>
+
+          <div style="margin: 1.5rem 0;">
+            <label>Preferencias de contacto</label>
+            <div style="display:flex;flex-direction:column;gap:4px; margin-top: 8px;">
+              <label style="display:flex;gap:8px;align-items:center">
+                <input type="checkbox" name="prefContacto" value="email"> Correo electrónico
+              </label>
+              <label style="display:flex;gap:8px;align-items:center">
+                <input type="checkbox" name="prefContacto" value="sms"> SMS
+              </label>
+              <label style="display:flex;gap:8px;align-items:center">
+                <input type="checkbox" name="prefContacto" value="whatsapp"> WhatsApp
+              </label>
+            </div>
+          </div>
+
+          <div class="checkbox-wrapper">
+            <input type="checkbox" id="boletin">
+            <label for="boletin">
+              Deseo recibir novedades y promociones
+            </label>
+          </div>
+
+          <button class="button button--large" type="submit" style="width: 100%;">
+            Crear cuenta
+          </button>
+        </form>
+
+        <div class="auth-footer">
+          <p>¿Ya tienes una cuenta? <a href="login.html">Iniciar sesión</a></p>
         </div>
-        <div>
-          <label for="username">Usuario</label>
-          <input class="input" id="username" required>
-        </div>
-        <div>
-          <label for="email">Correo</label>
-          <input class="input" id="email" type="email">
-        </div>
-        <div>
-          <label for="telefono">Teléfono</label>
-          <input class="input" id="telefono">
-        </div>
-        <div>
-          <label for="direccion">Dirección</label>
-          <input class="input" id="direccion">
-        </div>
-        <div>
-          <label for="password">Contraseña</label>
-          <input class="input" id="password" type="password" required>
-        </div>
-        <button class="button" type="submit">Registrarme</button>
-      </form>
-    </section>
-  </main>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
-

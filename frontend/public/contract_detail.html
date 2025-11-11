@@ -4,45 +4,344 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Detalle de Contrato - La Oportunidad</title>
-  <link rel="stylesheet" href="../assets/css/base.css">
-  <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
-  <link rel="stylesheet" href="../assets/css/theme.css">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
+  <link rel="icon" href="/assets/img/logo.svg">
+  <style>
+    .contract-detail__section {
+      margin-bottom: var(--spacing-xl);
+    }
+    .contract-detail__info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--spacing-md);
+      margin-top: var(--spacing-md);
+    }
+    .contract-detail__info-item {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-xs);
+    }
+    .contract-detail__info-label {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .contract-detail__info-value {
+      font-size: var(--font-size-base);
+      color: var(--color-text);
+      font-weight: var(--font-weight-medium);
+    }
+    .payment-form {
+      margin-top: var(--spacing-lg);
+      padding: var(--spacing-lg);
+      background: var(--color-bg-tertiary);
+      border-radius: var(--radius-lg);
+    }
+    .payment-history {
+      margin-top: var(--spacing-lg);
+    }
+    .payment-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--spacing-md);
+      background: var(--color-bg-secondary);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--spacing-sm);
+    }
+    .signature-area {
+      border: 2px dashed var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-xl);
+      text-align: center;
+      background: var(--color-bg-tertiary);
+      margin-top: var(--spacing-lg);
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .signature-area.signed {
+      border-color: var(--color-success);
+      background: var(--color-primary-50);
+    }
+  </style>
   <script type="module">
-    import { requireAuth } from '../assets/js/auth.js';
-    import { renderHeader } from '../assets/js/ui.js';
-    import { apiFetch } from '../assets/js/api.js';
+    import { requireAuth } from '/assets/js/auth.js';
+    import { renderHeader, showToast } from '/assets/js/ui.js';
+    import { apiFetch } from '/assets/js/api.js';
     requireAuth();
+    
     function id(){ const u=new URL(location.href); return u.searchParams.get('id'); }
+    
+    let contractData = null;
+    let pagosData = { pagos: [], saldo: { montoTotal: 0, totalPagado: 0, saldo: 0 } };
+    
     window.addEventListener('DOMContentLoaded', async ()=>{
-      renderHeader();
-      const el = document.getElementById('detail');
-      try{
-        const c = await apiFetch('contratos',`/${id()}`);
-        const fecha = c.fecha ?? c.con_fecha ?? null;
-        const fechaPlazo = c.con_fecha_plazo ?? c.fecha_plazo ?? null;
-        const monto = c.monto ?? c.con_valor ?? null;
-        const firmado = c.firmado ?? (c.con_firmado === 1);
-        const entregado = c.entregado ?? (c.con_producto_entregado === 1);
-        el.innerHTML = `
-          <div class=\"card\">
-            <h2>Contrato #${c.id}</h2>
-            <p>Estado: <strong>${c.estado ?? c.con_estado ?? '—'}</strong></p>
-            <p>Fecha: ${fecha ? new Date(fecha).toLocaleString() : '—'}</p>
-            <p>Monto: ${monto != null ? `$${Number(monto).toLocaleString()}` : '—'}</p>
-            <p>Firmado: ${firmado ? 'Sí' : 'No'}</p>
-            <p>Entregado: ${entregado ? 'Sí' : 'No'}</p>
-            <p>Fecha de plazo: ${fechaPlazo ? new Date(fechaPlazo).toLocaleDateString() : '—'}</p>
-          </div>`;
-      }catch{ el.textContent = 'No se pudo cargar el contrato'; }
+      renderHeader({ active: 'contracts' });
+      await loadContract();
+      await loadPagos();
+      setupPaymentForm();
+      setupSignature();
     });
+    
+    async function loadContract() {
+      try {
+        const contract = await apiFetch('contratos', `/${id()}`);
+        contractData = contract;
+        renderContract();
+      } catch(err) {
+        console.error('Error cargando contrato:', err);
+        document.getElementById('contractDetail').innerHTML = '<div class="empty-state"><h3>Error al cargar el contrato</h3></div>';
+      }
+    }
+    
+    async function loadPagos() {
+      try {
+        const data = await apiFetch('contratos', `/${id()}/pagos`);
+        pagosData = data || { pagos: [], saldo: { montoTotal: 0, totalPagado: 0, saldo: 0 } };
+        renderPagos();
+      } catch(err) {
+        console.error('Error cargando pagos:', err);
+      }
+    }
+    
+    function renderContract() {
+      if (!contractData) return;
+      
+      const c = contractData;
+      const monto = c.monto || c.con_valor || 0;
+      const estado = c.estado || c.con_estado || 'A';
+      const fecha = c.fecha || c.con_fecha;
+      const fechaPlazo = c.fechaPlazo || c.con_fecha_plazo;
+      
+      document.getElementById('contractDetail').innerHTML = `
+        <div class="contract-detail__section">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--spacing-md);flex-wrap:wrap;gap:var(--spacing-md);">
+            <div>
+              <h2 style="margin:0 0 var(--spacing-xs);">Contrato #${c.id || id()}</h2>
+              <p style="margin:0;color:var(--color-text-muted);">${formatDate(fecha)}</p>
+            </div>
+            <span class="badge ${getEstadoBadgeClass(estado)}">${getEstadoTexto(estado)}</span>
+          </div>
+          
+          <div class="contract-detail__info-grid">
+            <div class="contract-detail__info-item">
+              <span class="contract-detail__info-label">Monto del préstamo</span>
+              <span class="contract-detail__info-value" style="color:var(--color-primary);font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);">
+                $${Number(monto).toLocaleString()}
+              </span>
+            </div>
+            <div class="contract-detail__info-item">
+              <span class="contract-detail__info-label">Total pagado</span>
+              <span class="contract-detail__info-value" style="color:var(--color-success);font-size:var(--font-size-xl);">
+                $${Number(pagosData.saldo.totalPagado).toLocaleString()}
+              </span>
+            </div>
+            <div class="contract-detail__info-item">
+              <span class="contract-detail__info-label">Saldo pendiente</span>
+              <span class="contract-detail__info-value" style="color:${pagosData.saldo.saldo > 0 ? 'var(--color-error)' : 'var(--color-success)'};font-size:var(--font-size-xl);font-weight:var(--font-weight-bold);">
+                $${Number(pagosData.saldo.saldo).toLocaleString()}
+              </span>
+            </div>
+            ${fechaPlazo ? `
+              <div class="contract-detail__info-item">
+                <span class="contract-detail__info-label">Fecha límite</span>
+                <span class="contract-detail__info-value">${formatDate(fechaPlazo)}</span>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+    
+    function renderPagos() {
+      const container = document.getElementById('pagosHistory');
+      if (!container) return;
+      
+      if (pagosData.pagos && pagosData.pagos.length > 0) {
+        container.innerHTML = `
+          <h3 style="margin-top:0">Historial de Pagos</h3>
+          <div class="payment-history">
+            ${pagosData.pagos.map(pago => `
+              <div class="payment-item">
+                <div>
+                  <strong>$${Number(pago.monto).toLocaleString()}</strong>
+                  <p style="margin:var(--spacing-xs) 0 0;color:var(--color-text-muted);font-size:var(--font-size-sm);">
+                    ${formatDate(pago.fecha_pago)} • ${pago.metodo_pago || 'No especificado'}
+                    ${pago.referencia ? ` • Ref: ${escapeHtml(pago.referencia)}` : ''}
+                  </p>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else {
+        container.innerHTML = '<p class="text-muted">No hay pagos registrados aún.</p>';
+      }
+    }
+    
+    function setupPaymentForm() {
+      const form = document.getElementById('paymentForm');
+      if (!form) return;
+      
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const monto = Number(document.getElementById('paymentAmount').value);
+        const metodo = document.getElementById('paymentMethod').value;
+        const referencia = document.getElementById('paymentReference').value.trim();
+        const observaciones = document.getElementById('paymentObservations').value.trim();
+        
+        if (monto <= 0 || monto > pagosData.saldo.saldo) {
+          showToast('Monto inválido');
+          return;
+        }
+        
+        try {
+          await apiFetch('contratos', '/pagos', {
+            method: 'POST',
+            body: {
+              contrato_id: id(),
+              monto,
+              metodo_pago: metodo,
+              referencia,
+              observaciones
+            }
+          });
+          showToast('Pago registrado exitosamente');
+          form.reset();
+          await loadPagos();
+          await loadContract();
+        } catch(err) {
+          console.error('Error registrando pago:', err);
+          showToast('No se pudo registrar el pago');
+        }
+      });
+    }
+    
+    function setupSignature() {
+      const signatureArea = document.getElementById('signatureArea');
+      const signButton = document.getElementById('signButton');
+      
+      if (!signatureArea || !signButton) return;
+      
+      signButton.addEventListener('click', async () => {
+        if (confirm('¿Confirmas que deseas firmar este contrato digitalmente?')) {
+          try {
+            await apiFetch('contratos', `/${id()}/firmar`, { method: 'PATCH' });
+            showToast('Contrato firmado exitosamente');
+            signatureArea.classList.add('signed');
+            signatureArea.innerHTML = `
+              <div style="color:var(--color-success);font-size:var(--font-size-2xl);margin-bottom:var(--spacing-md);">✓</div>
+              <h3 style="margin:0;color:var(--color-success);">Contrato Firmado</h3>
+              <p style="margin:var(--spacing-sm) 0 0;color:var(--color-text-muted);">Firmado el ${new Date().toLocaleDateString('es-ES')}</p>
+            `;
+            signButton.style.display = 'none';
+          } catch(err) {
+            console.error('Error firmando contrato:', err);
+            showToast('No se pudo firmar el contrato');
+          }
+        }
+      });
+    }
+    
+    function getEstadoBadgeClass(estado) {
+      const map = {
+        'A': 'badge--success',
+        'V': 'badge--error',
+        'C': 'badge--secondary',
+        'R': 'badge--info',
+        'P': 'badge--success'
+      };
+      return map[estado] || 'badge--secondary';
+    }
+    
+    function getEstadoTexto(estado) {
+      const map = {
+        'A': 'Activo',
+        'V': 'Vencido',
+        'C': 'Cancelado',
+        'R': 'Renovado',
+        'P': 'Pagado'
+      };
+      return map[estado] || estado;
+    }
+    
+    function formatDate(dateStr) {
+      if (!dateStr) return '—';
+      try {
+        return new Date(dateStr).toLocaleDateString('es-ES', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      } catch {
+        return dateStr;
+      }
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
   </script>
 </head>
 <body>
   <header></header>
   <main class="container">
-    <h1>Detalle de contrato</h1>
-    <section id="detail"></section>
+    <h1>Detalle de Contrato</h1>
+    <section id="contractDetail" class="card contract-detail__section"></section>
+    
+    ${pagosData.saldo.saldo > 0 ? `
+      <section class="card payment-form">
+        <h2 style="margin-top:0">Registrar Pago</h2>
+        <form id="paymentForm">
+          <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--spacing-md);">
+            <div>
+              <label for="paymentAmount">Monto *</label>
+              <input class="input" id="paymentAmount" type="number" min="0.01" step="0.01" max="${pagosData.saldo.saldo}" required>
+            </div>
+            <div>
+              <label for="paymentMethod">Método de pago *</label>
+              <select class="input" id="paymentMethod" required>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Transferencia">Transferencia</option>
+                <option value="Tarjeta">Tarjeta</option>
+                <option value="Cheque">Cheque</option>
+              </select>
+            </div>
+            <div>
+              <label for="paymentReference">Referencia/Comprobante</label>
+              <input class="input" id="paymentReference" placeholder="Número de comprobante">
+            </div>
+          </div>
+          <div style="margin-top:var(--spacing-md);">
+            <label for="paymentObservations">Observaciones</label>
+            <textarea class="input" id="paymentObservations" rows="2" placeholder="Notas adicionales..."></textarea>
+          </div>
+          <button class="button" type="submit" style="margin-top:var(--spacing-md);">Registrar Pago</button>
+        </form>
+      </section>
+    ` : ''}
+    
+    <section class="card" id="pagosHistory"></section>
+    
+    <section class="card">
+      <h2 style="margin-top:0">Firma Digital</h2>
+      <div class="signature-area" id="signatureArea">
+        <p style="color:var(--color-text-muted);margin-bottom:var(--spacing-md);">
+          Al firmar este contrato, confirmas que has leído y aceptas todos los términos y condiciones.
+        </p>
+        <button class="button" id="signButton">Firmar Contrato</button>
+      </div>
+    </section>
   </main>
 </body>
 </html>

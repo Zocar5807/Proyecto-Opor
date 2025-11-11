@@ -111,10 +111,10 @@ router.post('/', authenticateJWT, async (req, res) => {
     const nuevaSolicitud = {
       // aceptamos tanto usuarioId como usuario_id en el body o del token
       usuarioId: user.id || body.usuarioId || body.usuario_id || 0,
-      nombre: user.nombre || body.nombre || body.nombre_cliente || null,
-      apellidos: user.apellidos || body.apellidos || body.apellidos_cliente || null,
-      cedula: user.cedula || body.cedula || body.identificacion || null,
-      username: user.username || body.username || null,
+      nombre: user.nombre || user.nombres || (user.raw && user.raw.nombres) || body.nombre || body.nombre_cliente || null,
+      apellidos: user.apellidos || (user.raw && user.raw.apellidos) || body.apellidos || body.apellidos_cliente || null,
+      cedula: user.cedula || (user.raw && user.raw.cedula) || body.cedula || body.identificacion || null,
+      username: user.username || (user.raw && user.raw.username) || body.username || null,
       estado: body.estado || 'Pendiente',
       fechaCreacion: body.fechaCreacion || body.fecha_creacion || null,
       categoria: body.categoria || null,
@@ -164,7 +164,7 @@ router.get('/', optionalAuth, async (req, res) => {
     const result = await service.obtenerSolicitudes(filters);
 
     //  Normalizamos la respuesta para incluir datos de cliente
-    const data = result.rows.map(r => {
+    const data = (result.rows || []).map(r => {
       let cliente = null;
       try {
         cliente = r.cliente_json ? JSON.parse(r.cliente_json) : null;
@@ -173,18 +173,29 @@ router.get('/', optionalAuth, async (req, res) => {
         console.error(`Error parseando cliente_json para solicitud ID ${r.id}:`, e.message);  // Cambio: usa backticks para interpolación
       }
 
+      // Intentar parsear producto_json si existe
+      let producto = null;
+      try {
+        producto = r.producto_json ? JSON.parse(r.producto_json) : null;
+      } catch (e) {
+        console.error(`Error parseando producto_json para solicitud ID ${r.id}:`, e.message);
+      }
+      
       return {
         id: r.id,
         usuario_id: r.usuario_id,
         nombre: cliente?.nombre || null,
-        apellidos: cliente?.apellidos || null,  // Cambio: agrega apellidos para mostrarlo
+        apellidos: cliente?.apellidos || null,
         cedula: cliente?.cedula || null,
         username: cliente?.username || null,
         estado: r.estado,
         fecha_creacion: r.created_at,
-        categoria: r.categoria || null,
+        fecha_respuesta: r.fecha_respuesta || null,
+        categoria: r.categoria || producto?.categoria || null,
         nombre_producto: r.nombre_producto,
-        descripcion: r.descripcion || null
+        descripcion: r.descripcion || null,
+        monto_aprobado: r.monto_aprobado || null,
+        producto: producto
       };
     });
 
@@ -276,7 +287,12 @@ router.get('/:id', authenticateJWT, async (req, res) => {
         descripcion: getField(solicitud, 'descripcion'),
         imagenes,
         aprobado_por: getField(solicitud, 'aprobado_por') || null,
-        motivo_rechazo: getField(solicitud, 'motivo_rechazo') || null
+        motivo_rechazo: getField(solicitud, 'motivo_rechazo') || null,
+        monto_aprobado: getField(solicitud, 'monto_aprobado') || null,
+        tasa: getField(solicitud, 'tasa') || getField(solicitud, 'con_tasa') || null,
+        plazo: getField(solicitud, 'plazo') || null,
+        fecha_plazo: getField(solicitud, 'fecha_plazo') || null,
+        sucursal: getField(solicitud, 'sucursal') || null
       }
     });
   } catch (err) {
@@ -309,6 +325,23 @@ router.put('/:id/estado', authenticateJWT, requireAdmin, async (req, res) => {
     const updated = await service.actualizarEstado(id, nuevoEstado, adminId, motivo);
     if (!updated || updated.affectedRows === 0) {
       return res.status(404).json({ ok: false, msg: 'Solicitud no encontrada' });
+    }
+
+    // Si se aprueba, actualizar también monto, tasa, plazo, etc.
+    if (nuevoEstado === 'Aprobado' && (req.body.monto_aprobado || req.body.con_tasa || req.body.plazo || req.body.fecha_plazo || req.body.sucursal)) {
+      try {
+        await service.actualizarMontoAprobado(
+          id,
+          req.body.monto_aprobado,
+          req.body.con_tasa,
+          req.body.plazo,
+          req.body.fecha_plazo,
+          req.body.sucursal
+        );
+      } catch (err) {
+        console.error('Error actualizando monto aprobado:', err);
+        // No fallar la operación principal si esto falla
+      }
     }
 
     // Si el estado es 'Aprobado', notificar a Contratos

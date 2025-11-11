@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin - Liquidez - La Oportunidad</title>
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
+  <link rel="icon" href="/assets/img/logo.svg">
+  <style>
+    .liquidity-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: var(--spacing-6);
+      margin-bottom: var(--spacing-8);
+    }
+    
+    .liquidity-card {
+      background: var(--color-bg-elevated);
+      border-radius: var(--radius-xl);
+      padding: var(--spacing-6);
+      box-shadow: var(--shadow-md);
+      border: 2px solid var(--color-border-light);
+      transition: all var(--transition-base);
+    }
+    
+    .liquidity-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--color-primary-200);
+    }
+    
+    .liquidity-card__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: var(--spacing-4);
+      padding-bottom: var(--spacing-4);
+      border-bottom: 2px solid var(--color-border-light);
+    }
+    
+    .liquidity-card__title {
+      font-size: var(--font-size-xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-text-primary);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-2);
+    }
+    
+    .liquidity-card__badge {
+      padding: var(--spacing-1) var(--spacing-3);
+      border-radius: var(--radius-full);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-semibold);
+    }
+    
+    .liquidity-card__badge--ok {
+      background: var(--color-primary-100);
+      color: var(--color-primary-700);
+    }
+    
+    .liquidity-card__badge--low {
+      background: var(--color-warning-100);
+      color: var(--color-warning-700);
+    }
+    
+    .liquidity-card__badge--high {
+      background: var(--color-info-100);
+      color: var(--color-info-700);
+    }
+    
+    .liquidity-card__amount {
+      font-size: var(--font-size-3xl);
+      font-weight: var(--font-weight-extrabold);
+      color: var(--color-primary);
+      margin: var(--spacing-4) 0;
+      text-shadow: 0 2px 4px rgba(22, 163, 74, 0.1);
+    }
+    
+    .liquidity-card__info {
+      display: grid;
+      gap: var(--spacing-2);
+    }
+    
+    .liquidity-card__info-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: var(--font-size-sm);
+    }
+    
+    .liquidity-card__info-label {
+      color: var(--color-text-muted);
+    }
+    
+    .liquidity-card__info-value {
+      color: var(--color-text-primary);
+      font-weight: var(--font-weight-medium);
+    }
+    
+    .transfer-form {
+      background: var(--color-bg-elevated);
+      border-radius: var(--radius-xl);
+      padding: var(--spacing-6);
+      box-shadow: var(--shadow-md);
+      margin-top: var(--spacing-8);
+    }
+    
+    .transfer-form__header {
+      margin-bottom: var(--spacing-6);
+      padding-bottom: var(--spacing-4);
+      border-bottom: 2px solid var(--color-border-light);
+    }
+    
+    .transfer-form__header h2 {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-2);
+      color: var(--color-primary-800);
+    }
+    
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: var(--spacing-5);
+      margin-bottom: var(--spacing-5);
+    }
+    
+    .form-group {
+      margin-bottom: var(--spacing-5);
+    }
+    
+    .form-group label {
+      display: block;
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-text-primary);
+      margin-bottom: var(--spacing-2);
+      font-size: var(--font-size-sm);
+    }
+    
+    .form-group .input,
+    .form-group select {
+      width: 100%;
+      padding: var(--spacing-3) var(--spacing-4);
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      font-size: var(--font-size-base);
+      transition: all var(--transition-base);
+      background: var(--color-bg-elevated);
+    }
+    
+    .form-group .input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px var(--color-primary-100);
+    }
+  </style>
+  <script type="module">
+    import { requireAuth } from '/assets/js/auth.js';
+    import { renderHeader, showToast } from '/assets/js/ui.js';
+    import { apiFetch } from '/assets/js/api.js';
+    requireAuth();
+    
+    let allLiquidity = [];
+    
+    window.addEventListener('DOMContentLoaded', async () => {
+      renderHeader({ active: 'liquidity' });
+      await loadLiquidity();
+      setupTransferForm();
+    });
+    
+    async function loadLiquidity() {
+      const container = document.getElementById('liquidityContainer');
+      const loadingState = document.getElementById('loadingState');
+      
+      try {
+        loadingState.style.display = 'block';
+        container.style.display = 'none';
+        
+        const response = await apiFetch('contratos', '/liquidez');
+        // La respuesta puede venir como array directo o dentro de data
+        allLiquidity = Array.isArray(response) ? response : (response?.data || []);
+        if (!Array.isArray(allLiquidity)) {
+          allLiquidity = [];
+        }
+        
+        if (allLiquidity.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <h3 class="empty-state-title">No hay sucursales registradas</h3>
+              <p class="empty-state-text">Las sucursales aparecerán aquí cuando se registren en el sistema.</p>
+            </div>
+          `;
+        } else {
+          renderLiquidity();
+        }
+        
+        container.style.display = 'block';
+        updateTransferFormOptions();
+      } catch (err) {
+        console.error('Error cargando liquidez:', err);
+        container.innerHTML = `
+          <div class="empty-state">
+            <h3 class="empty-state-title">Error al cargar liquidez</h3>
+            <p class="empty-state-text">${err.message || 'Hubo un problema conectando con el servidor'}</p>
+          </div>
+        `;
+        container.style.display = 'block';
+      } finally {
+        loadingState.style.display = 'none';
+      }
+    }
+    
+    function renderLiquidity() {
+      const container = document.getElementById('liquidityContainer');
+      
+      container.innerHTML = `
+        <div class="liquidity-grid">
+          ${allLiquidity.map(sucursal => {
+            const liquidez = Number(sucursal.liquidez_actual || 0);
+            const minima = Number(sucursal.liquidez_minima || 0);
+            const maxima = Number(sucursal.liquidez_maxima || 0);
+            
+            let badgeClass = 'liquidity-card__badge--ok';
+            let badgeText = 'Normal';
+            
+            if (liquidez < minima) {
+              badgeClass = 'liquidity-card__badge--low';
+              badgeText = 'Baja';
+            } else if (maxima > 0 && liquidez > maxima) {
+              badgeClass = 'liquidity-card__badge--high';
+              badgeText = 'Alta';
+            }
+            
+            return `
+              <div class="liquidity-card">
+                <div class="liquidity-card__header">
+                  <h3 class="liquidity-card__title">
+                    🏢 ${escapeHtml(sucursal.sucursal || 'Sin nombre')}
+                  </h3>
+                  <span class="liquidity-card__badge ${badgeClass}">${badgeText}</span>
+                </div>
+                <div class="liquidity-card__amount">
+                  ${formatCurrency(liquidez)}
+                </div>
+                <div class="liquidity-card__info">
+                  ${minima > 0 ? `
+                    <div class="liquidity-card__info-item">
+                      <span class="liquidity-card__info-label">Mínimo:</span>
+                      <span class="liquidity-card__info-value">${formatCurrency(minima)}</span>
+                    </div>
+                  ` : ''}
+                  ${maxima > 0 ? `
+                    <div class="liquidity-card__info-item">
+                      <span class="liquidity-card__info-label">Máximo:</span>
+                      <span class="liquidity-card__info-value">${formatCurrency(maxima)}</span>
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+    
+    function updateTransferFormOptions() {
+      const origenSelect = document.getElementById('transferOrigen');
+      const destinoSelect = document.getElementById('transferDestino');
+      
+      if (!origenSelect || !destinoSelect) return;
+      
+      const options = allLiquidity.map(s => `
+        <option value="${escapeHtml(s.sucursal)}">${escapeHtml(s.sucursal)} (${formatCurrency(s.liquidez_actual || 0)})</option>
+      `).join('');
+      
+      origenSelect.innerHTML = '<option value="">Selecciona sucursal origen</option>' + options;
+      destinoSelect.innerHTML = '<option value="">Selecciona sucursal destino</option>' + options;
+    }
+    
+    function setupTransferForm() {
+      const form = document.getElementById('transferForm');
+      const origenSelect = document.getElementById('transferOrigen');
+      const destinoSelect = document.getElementById('transferDestino');
+      const montoInput = document.getElementById('transferMonto');
+      
+      if (!form) return;
+      
+      // Actualizar monto máximo cuando se selecciona origen
+      origenSelect.addEventListener('change', function() {
+        const sucursal = allLiquidity.find(s => s.sucursal === this.value);
+        if (sucursal) {
+          montoInput.max = sucursal.liquidez_actual || 0;
+          montoInput.placeholder = `Máximo: ${formatCurrency(sucursal.liquidez_actual || 0)}`;
+        }
+      });
+      
+      // Validar que origen y destino sean diferentes
+      destinoSelect.addEventListener('change', function() {
+        if (this.value === origenSelect.value) {
+          showToast('Las sucursales origen y destino deben ser diferentes');
+          this.value = '';
+        }
+      });
+      
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const origen = origenSelect.value;
+        const destino = destinoSelect.value;
+        const monto = Number(montoInput.value);
+        const motivo = document.getElementById('transferMotivo').value.trim();
+        
+        if (!origen || !destino || !monto || monto <= 0) {
+          showToast('Completa todos los campos obligatorios');
+          return;
+        }
+        
+        if (origen === destino) {
+          showToast('Las sucursales origen y destino deben ser diferentes');
+          return;
+        }
+        
+        const sucursalOrigen = allLiquidity.find(s => s.sucursal === origen);
+        if (sucursalOrigen && monto > sucursalOrigen.liquidez_actual) {
+          showToast(`Liquidez insuficiente. Disponible: ${formatCurrency(sucursalOrigen.liquidez_actual)}`);
+          return;
+        }
+        
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:var(--spacing-2);">⏳ Transferiendo...</span>';
+        
+        try {
+          await apiFetch('contratos', '/liquidez/transferir', {
+            method: 'POST',
+            body: {
+              sucursal_origen: origen,
+              sucursal_destino: destino,
+              monto,
+              motivo: motivo || null
+            }
+          });
+          
+          showToast('Transferencia realizada exitosamente');
+          form.reset();
+          await loadLiquidity();
+        } catch (err) {
+          console.error('Error realizando transferencia:', err);
+          showToast('No se pudo realizar la transferencia: ' + (err.message || 'Error desconocido'));
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
+        }
+      });
+    }
+    
+    function formatCurrency(amount) {
+      return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0
+      }).format(amount || 0);
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <div class="page-header">
+      <h1 class="page-title">Liquidez de Sucursales</h1>
+      <p class="text-muted">Gestiona la liquidez y realiza transferencias entre sucursales</p>
+    </div>
+    
+    <div id="loadingState" class="empty-state" style="display: none;">
+      <div class="spinner" style="margin: 0 auto;"></div>
+      <p class="empty-state-text">Cargando liquidez...</p>
+    </div>
+    
+    <section id="liquidityContainer" style="display:none;"></section>
+    
+    <section class="transfer-form">
+      <div class="transfer-form__header">
+        <h2>💸 Transferir Fondos</h2>
+        <p style="margin: var(--spacing-2) 0 0; color: var(--color-text-muted); font-size: var(--font-size-sm);">
+          Transfiere fondos entre sucursales para optimizar la liquidez
+        </p>
+      </div>
+      <form id="transferForm">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="transferOrigen">Sucursal Origen *</label>
+            <select id="transferOrigen" class="input" required>
+              <option value="">Selecciona sucursal origen</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="transferDestino">Sucursal Destino *</label>
+            <select id="transferDestino" class="input" required>
+              <option value="">Selecciona sucursal destino</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="transferMonto">Monto *</label>
+            <input 
+              type="number" 
+              id="transferMonto" 
+              class="input" 
+              min="0.01" 
+              step="0.01" 
+              required
+              placeholder="0.00"
+            >
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="transferMotivo">Motivo de la transferencia</label>
+          <textarea 
+            id="transferMotivo" 
+            class="input" 
+            rows="3" 
+            placeholder="Describe el motivo de la transferencia (opcional)"
+          ></textarea>
+        </div>
+        <button class="button" type="submit">
+          <span style="display:inline-flex;align-items:center;gap:var(--spacing-2);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L21 16M17 20L13 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Realizar Transferencia
+          </span>
+        </button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
+

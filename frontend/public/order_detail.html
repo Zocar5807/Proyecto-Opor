@@ -4,51 +4,300 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Detalle de Orden - La Oportunidad</title>
-  <link rel="stylesheet" href="../assets/css/base.css">
-  <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
-  <link rel="stylesheet" href="../assets/css/theme.css">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
+  <link rel="icon" href="/assets/img/logo.svg">
+  <style>
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  </style>
   <script type="module">
-    import { requireAuth } from '../assets/js/auth.js';
-    import { renderHeader } from '../assets/js/ui.js';
-    import { apiFetch } from '../assets/js/api.js';
+    import { requireAuth } from '/assets/js/auth.js';
+    import { renderHeader } from '/assets/js/ui.js';
+    import { apiFetch } from '/assets/js/api.js';
     requireAuth();
+    
     function id(){ const u=new URL(location.href); return u.searchParams.get('id'); }
+    
     window.addEventListener('DOMContentLoaded', async ()=>{
-      renderHeader();
-      const el = document.getElementById('detail');
-      try{
-        const o = await apiFetch('ordenes',`/${id()}`);
-        console.log('Orden detalle', o);
-        // El endpoint envuelve en { ok, data }. apiFetch ya extrae data, pero si llegara ok:true sin data, intentamos data
-        const orden = (o && o.ok && o.data) ? o.data : (Array.isArray(o) ? o[0] : o);
-        const orderId = orden?.id_orden ?? orden?.id ?? '';
-        const fechaRaw = orden?.fecha_creacion ?? orden?.fecha ?? '';
-        let fechaFmt = '—';
-        if (fechaRaw) {
-          const d = new Date(fechaRaw);
-          fechaFmt = isNaN(d.getTime()) ? String(fechaRaw) : d.toLocaleString();
-        }
-        const items = (orden?.productos || orden?.items || []);
-        el.innerHTML = `
-          <div class=\"card\">
-            <h2>Orden #${orderId}</h2>
-            <p>Estado: <strong>${orden?.estado ?? orden?.status ?? 'entregado'}</strong></p>
-            <p>Fecha: ${fechaFmt}</p>
-            <h3>Items</h3>
-            <ul>${items.map(i=>`<li>${i.nombre ?? i.name} x ${i.cantidad ?? i.quantity} — $${Number(i.precio ?? i.price).toLocaleString()}</li>`).join('')}</ul>
-          </div>`;
-      }catch{
-        el.textContent = 'No se pudo cargar la orden';
-      }
+      renderHeader({ active:'orders' });
+      await loadOrder();
     });
+    
+    async function loadOrder() {
+      try {
+        const order = await apiFetch('ordenes', `/${id()}`);
+        renderOrder(order);
+      } catch(err) {
+        console.error('Error cargando orden:', err);
+        document.getElementById('orderDetail').innerHTML = '<div class="empty-state"><h3>Error al cargar la orden</h3></div>';
+      }
+    }
+    
+    function renderOrder(order) {
+      const id = order.id_orden || order.id || '';
+      const fecha = order.fecha_creacion || order.fecha || order.created_at;
+      const estado = (order.estado || 'pendiente').toLowerCase();
+      
+      const nombresCliente = order.nombres_cliente || order.nombresCliente || '';
+      const apellidosCliente = order.apellidos_cliente || order.apellidosCliente || '';
+      const nombreCompleto = `${nombresCliente} ${apellidosCliente}`.trim() || 'Cliente sin nombre';
+      
+      let productos = [];
+      try {
+        if (typeof order.productos === 'string') {
+          productos = JSON.parse(order.productos);
+        } else if (Array.isArray(order.productos)) {
+          productos = order.productos;
+        }
+      } catch(e) {
+        console.error('Error parseando productos:', e);
+      }
+      
+      // Calcular total desde productos si no viene en order.total
+      // Intentar obtener el total de diferentes campos posibles
+      let total = Number(order.total || order.monto_total || order.totalCuenta || 0);
+      
+      // Si el total es 0 o no existe, calcularlo desde los productos
+      if ((total === 0 || isNaN(total)) && productos.length > 0) {
+        total = productos.reduce((sum, p) => {
+          const precio = Number(p.precio || 0);
+          const cantidad = Number(p.cantidad || 1);
+          const subtotal = Number(p.subtotal || (precio * cantidad));
+          return sum + subtotal;
+        }, 0);
+      }
+      
+      // Si aún es 0, intentar calcular desde el campo total de la BD directamente
+      if ((total === 0 || isNaN(total)) && order.total) {
+        total = Number(order.total);
+      }
+      
+      // Verificar si es cliente (no admin ni empleado)
+      const token = localStorage.getItem('token');
+      let isCliente = true;
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const role = payload.rol || payload.role || (payload.usu_nivel === 5 ? 'admin' : payload.usu_nivel === 4 ? 'empleado' : 'cliente');
+          isCliente = role === 'cliente' || (!role || (role !== 'admin' && role !== 'empleado'));
+        } catch (e) {
+          console.error('Error parsing token:', e);
+        }
+      }
+      
+      // Solo permitir cancelar si es cliente y la orden no está cancelada
+      const puedeCancelar = isCliente && estado !== 'cancelado' && estado !== 'completado';
+      
+      document.getElementById('orderDetail').innerHTML = `
+        <div class="card" style="margin-bottom:var(--spacing-xl);">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--spacing-md);flex-wrap:wrap;gap:var(--spacing-md);">
+            <div>
+              <h2 style="margin:0 0 var(--spacing-xs);">Orden #${id}</h2>
+              <p style="margin:0;color:var(--color-text-muted);">${formatDate(fecha)}</p>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:var(--spacing-sm);">
+              ${getEstadoBadgeHTML(estado)}
+              ${isCliente ? `
+                <div style="display:flex;flex-direction:column;gap:var(--spacing-xs);align-items:flex-end;">
+                  <label for="orderStatus" style="font-size:var(--font-size-sm);color:var(--color-text-muted);">Estado actual:</label>
+                  ${getEstadoBadgeHTML(estado)}
+                </div>
+              ` : ''}
+            </div>
+          </div>
+          
+          <div style="margin-top:var(--spacing-lg);">
+            <h3 style="margin:0 0 var(--spacing-sm);">Cliente</h3>
+            <p>${escapeHtml(nombreCompleto)}</p>
+            ${order.cedula_cliente ? `<p style="color:var(--color-text-muted);font-size:var(--font-size-sm);">Cédula: ${escapeHtml(String(order.cedula_cliente))}</p>` : ''}
+            ${order.email_cliente ? `<p style="color:var(--color-text-muted);font-size:var(--font-size-sm);">Email: ${escapeHtml(order.email_cliente)}</p>` : ''}
+            ${order.telefono_cliente ? `<p style="color:var(--color-text-muted);font-size:var(--font-size-sm);">Teléfono: ${escapeHtml(order.telefono_cliente)}</p>` : ''}
+            ${order.direccion_cliente ? `<p style="color:var(--color-text-muted);font-size:var(--font-size-sm);">Dirección: ${escapeHtml(order.direccion_cliente)}</p>` : ''}
+          </div>
+          
+          <div style="margin-top:var(--spacing-lg);">
+            <h3 style="margin:0 0 var(--spacing-md);">Productos</h3>
+            ${productos.length > 0 ? `
+              <div style="display:flex;flex-direction:column;gap:var(--spacing-sm);">
+                ${productos.map(p => `
+                  <div style="display:flex;justify-content:space-between;padding:var(--spacing-md);background:var(--color-bg-tertiary);border-radius:var(--radius-md);">
+                    <div>
+                      <strong>${escapeHtml(p.nombre || p.name || 'Producto sin nombre')}</strong>
+                      <p style="margin:var(--spacing-xs) 0 0;color:var(--color-text-muted);font-size:var(--font-size-sm);">
+                        Cantidad: ${p.cantidad || 1} × $${formatPrice(p.precio || 0)}
+                      </p>
+                    </div>
+                    <div style="font-weight:var(--font-weight-bold);">
+                      $${formatPrice(p.subtotal || (p.precio || 0) * (p.cantidad || 1))}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            ` : '<p class="text-muted">No hay productos en esta orden.</p>'}
+          </div>
+          
+          <div style="margin-top:var(--spacing-lg);padding-top:var(--spacing-lg);border-top:2px solid var(--color-border);display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:var(--font-size-xl);font-weight:var(--font-weight-bold);">Total</span>
+            <span style="font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);color:var(--color-primary);">
+              ${formatCurrency(total)}
+            </span>
+          </div>
+          
+          ${isCliente && puedeCancelar ? `
+            <div style="margin-top:var(--spacing-xl);padding-top:var(--spacing-lg);border-top:2px solid var(--color-border-light);">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--spacing-md);">
+                <div>
+                  <h3 style="margin:0 0 var(--spacing-xs);font-size:var(--font-size-lg);font-weight:var(--font-weight-semibold);color:var(--color-text-primary);">Acciones</h3>
+                  <p style="margin:0;color:var(--color-text-muted);font-size:var(--font-size-sm);">Puedes cancelar esta orden si aún no ha sido procesada</p>
+                </div>
+                 <button id="cancelOrderBtn" class="button" style="background:linear-gradient(135deg, #F87171 0%, #EF4444 100%);color:#FFFFFF;border:none;min-width:180px;box-shadow:0 4px 6px -1px rgba(239, 68, 68, 0.2), 0 2px 4px -1px rgba(239, 68, 68, 0.1);transition:all var(--transition-base);padding:0.75rem 1.5rem;font-weight:var(--font-weight-medium);">
+                    <span style="display:inline-flex;align-items:center;gap:var(--spacing-2);">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+                        <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      Cancelar Orden
+                    </span>
+                  </button>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+      
+      // Agregar evento para cancelar orden si es cliente
+      if (isCliente && puedeCancelar) {
+        const cancelBtn = document.getElementById('cancelOrderBtn');
+        if (cancelBtn) {
+          // Efecto hover suave
+          cancelBtn.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 6px 12px -2px rgba(239, 68, 68, 0.3), 0 4px 6px -1px rgba(239, 68, 68, 0.15)';
+            this.style.background = 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)';
+          });
+          cancelBtn.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = '0 4px 6px -1px rgba(239, 68, 68, 0.2), 0 2px 4px -1px rgba(239, 68, 68, 0.1)';
+            this.style.background = 'linear-gradient(135deg, #F87171 0%, #EF4444 100%)';
+          });
+          
+          cancelBtn.addEventListener('click', async () => {
+            if (!confirm('¿Estás seguro de que deseas cancelar esta orden?')) {
+              return;
+            }
+            
+            try {
+              cancelBtn.disabled = true;
+              cancelBtn.style.opacity = '0.7';
+              cancelBtn.style.cursor = 'not-allowed';
+              const originalContent = cancelBtn.innerHTML;
+              cancelBtn.innerHTML = `
+                <span style="display:inline-flex;align-items:center;gap:var(--spacing-2);">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;animation:spin 1s linear infinite;">
+                    <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="2" stroke-dasharray="12" stroke-dashoffset="6" opacity="0.3"/>
+                  </svg>
+                  Cancelando...
+                </span>
+              `;
+              
+              await apiFetch('ordenes', `/${id}`, {
+                method: 'PATCH',
+                body: { status: 'cancelado' }
+              });
+              
+              // Recargar la página para mostrar el nuevo estado
+              location.reload();
+            } catch (err) {
+              console.error('Error cancelando orden:', err);
+              alert('No se pudo cancelar la orden. ' + (err.message || ''));
+              cancelBtn.disabled = false;
+              cancelBtn.style.opacity = '1';
+              cancelBtn.style.cursor = 'pointer';
+              cancelBtn.innerHTML = originalContent;
+            }
+          });
+        }
+      }
+    }
+    
+    function getEstadoBadgeClass(estado) {
+      const estadoLower = (estado || '').toLowerCase();
+      const map = {
+        'pendiente': 'badge--warning',
+        'en_proceso': 'badge--info',
+        'procesando': 'badge--info',
+        'enviado': 'badge--info',
+        'entregado': 'badge--success',
+        'completado': 'badge--success',
+        'cancelado': 'badge--error'
+      };
+      return map[estadoLower] || 'badge--secondary';
+    }
+    
+    function getEstadoTexto(estado) {
+      const estadoLower = (estado || '').toLowerCase();
+      const map = {
+        'pendiente': 'Pendiente',
+        'en_proceso': 'En Proceso',
+        'procesando': 'Procesando',
+        'enviado': 'Enviado',
+        'entregado': 'Entregado',
+        'completado': 'Completado',
+        'cancelado': 'Cancelado'
+      };
+      return map[estadoLower] || estado.toUpperCase();
+    }
+    
+    function getEstadoBadgeHTML(estado) {
+      const estadoLower = (estado || '').toLowerCase();
+      const clase = getEstadoBadgeClass(estado);
+      const texto = getEstadoTexto(estado);
+      return `<span class="badge ${clase}">${texto}</span>`;
+    }
+    
+    function formatDate(dateStr) {
+      if (!dateStr) return '—';
+      try {
+        return new Date(dateStr).toLocaleDateString('es-ES', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch {
+        return dateStr;
+      }
+    }
+    
+    function formatPrice(price) {
+      return Number(price).toLocaleString();
+    }
+    
+    function formatCurrency(amount) {
+      return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0
+      }).format(amount || 0);
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
   </script>
 </head>
 <body>
   <header></header>
   <main class="container">
-    <h1>Detalle de orden</h1>
-    <section id="detail"></section>
+    <h1>Detalle de Orden</h1>
+    <section id="orderDetail"></section>
   </main>
 </body>
 </html>

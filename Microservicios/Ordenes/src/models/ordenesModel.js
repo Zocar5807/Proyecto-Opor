@@ -45,13 +45,22 @@ async function traerOrden(id) {
     if (rows.length === 0) return null;
 
     let productosParsed = [];
-    try {
-      productosParsed = rows[0].productos ? JSON.parse(rows[0].productos) : [];
-    } catch (err) {
-      productosParsed = [];
+    if (rows[0].productos) {
+      if (typeof rows[0].productos === 'string') {
+        try {
+          productosParsed = JSON.parse(rows[0].productos);
+        } catch (err) {
+          console.error('Error parseando productos (string):', err);
+          productosParsed = [];
+        }
+      } else if (Array.isArray(rows[0].productos)) {
+        productosParsed = rows[0].productos;
+      } else if (typeof rows[0].productos === 'object') {
+        productosParsed = [rows[0].productos];
+      }
     }
 
-    return { ...rows[0], productos: productosParsed };
+    return { ...rows[0], productos: Array.isArray(productosParsed) ? productosParsed : [] };
   } finally {
     conn.release();
   }
@@ -64,12 +73,21 @@ async function traerOrdenes() {
     const [rows] = await conn.query('SELECT * FROM ordenes ORDER BY fecha_creacion DESC');
     return rows.map(r => {
       let productosParsed = [];
-      try {
-        productosParsed = r.productos ? JSON.parse(r.productos) : [];
-      } catch (err) {
-        productosParsed = [];
+      if (r.productos) {
+        if (typeof r.productos === 'string') {
+          try {
+            productosParsed = JSON.parse(r.productos);
+          } catch (err) {
+            console.error('Error parseando productos (string):', err);
+            productosParsed = [];
+          }
+        } else if (Array.isArray(r.productos)) {
+          productosParsed = r.productos;
+        } else if (typeof r.productos === 'object') {
+          productosParsed = [r.productos];
+        }
       }
-      return { ...r, productos: productosParsed };
+      return { ...r, productos: Array.isArray(productosParsed) ? productosParsed : [] };
     });
   } finally {
     conn.release();
@@ -83,12 +101,21 @@ async function traerOrdenesPorUsuario(userId) {
     const [rows] = await conn.query('SELECT * FROM ordenes WHERE id_usuario = ? ORDER BY fecha_creacion DESC', [userId]);
     return rows.map(r => {
       let productosParsed = [];
-      try {
-        productosParsed = r.productos ? JSON.parse(r.productos) : [];
-      } catch (err) {
-        productosParsed = [];
+      if (r.productos) {
+        if (typeof r.productos === 'string') {
+          try {
+            productosParsed = JSON.parse(r.productos);
+          } catch (err) {
+            console.error('Error parseando productos (string):', err);
+            productosParsed = [];
+          }
+        } else if (Array.isArray(r.productos)) {
+          productosParsed = r.productos;
+        } else if (typeof r.productos === 'object') {
+          productosParsed = [r.productos];
+        }
       }
-      return { ...r, productos: productosParsed };
+      return { ...r, productos: Array.isArray(productosParsed) ? productosParsed : [] };
     });
   } finally {
     conn.release();

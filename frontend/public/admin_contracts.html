@@ -4,17 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin - Contratos</title>
-  <link rel="stylesheet" href="../assets/css/base.css">
-  <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
-  <link rel="stylesheet" href="../assets/css/theme.css">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
   <script type="module">
-    import { requireAuth } from '../assets/js/auth.js';
-    import { renderHeader } from '../assets/js/ui.js';
-    import { apiFetch } from '../assets/js/api.js';
-    requireAuth('admin');
+    import { requireAuth } from '/assets/js/auth.js';
+    import { renderHeader } from '/assets/js/ui.js';
+    import { apiFetch } from '/assets/js/api.js';
+    requireAuth(['admin','empleado']);
     window.addEventListener('DOMContentLoaded', async ()=>{
-      renderHeader({ active:'dashboard', isAdmin:true });
+      renderHeader({ active:'contracts' });
       const tbody = document.querySelector('tbody');
       const qInput = document.getElementById('q');
       const pageSizeSel = document.getElementById('pageSize');

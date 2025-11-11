@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Perfil - La Oportunidad</title>
-  <link rel="stylesheet" href="../assets/css/base.css">
-  <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
-  <link rel="stylesheet" href="../assets/css/theme.css">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
   <script type="module">
-    import { requireAuth, getUserId } from '../assets/js/auth.js';
-    import { renderHeader, showToast } from '../assets/js/ui.js';
-    import { apiFetch } from '../assets/js/api.js';
+    import { requireAuth, getUserId, saveSession } from '/assets/js/auth.js';
+    import { renderHeader, showToast } from '/assets/js/ui.js';
+    import { apiFetch } from '/assets/js/api.js';
     requireAuth();
     window.addEventListener('DOMContentLoaded', async ()=>{
       renderHeader();
@@ -25,22 +25,56 @@
         document.getElementById('email').value = me.email ?? '';
         document.getElementById('telefono').value = me.telefono ?? '';
         document.getElementById('direccion').value = me.direccion ?? '';
-      }catch{}
+        document.getElementById('ciudad').value = me.ciudad ?? '';
+
+        const prefs = me.preferencias || {};
+        const contacto = prefs.contacto || [];
+        contacto.forEach(value => {
+          const checkbox = document.querySelector(`input[name="prefContacto"][value="${value}"]`);
+          if (checkbox) checkbox.checked = true;
+        });
+        if (prefs.categoriaFavorita) {
+          document.getElementById('categoriaPreferida').value = prefs.categoriaFavorita;
+        }
+        document.getElementById('boletin').checked = Boolean(prefs.boletin);
+      }catch(err){
+        console.error('No se pudo cargar el perfil', err);
+      }
       form.addEventListener('submit', async (e)=>{
         e.preventDefault();
+        const preferencias = {
+          contacto: Array.from(document.querySelectorAll('input[name="prefContacto"]:checked')).map(el => el.value),
+          categoriaFavorita: document.getElementById('categoriaPreferida').value || null,
+          boletin: document.getElementById('boletin').checked
+        };
         const body = {
           nombres: document.getElementById('nombres').value.trim(),
           apellidos: document.getElementById('apellidos').value.trim(),
           telefono: document.getElementById('telefono').value.trim(),
-          direccion: document.getElementById('direccion').value.trim()
+          direccion: document.getElementById('direccion').value.trim(),
+          ciudad: document.getElementById('ciudad').value.trim(),
+          email: document.getElementById('email').value.trim(),
+          preferencias
         };
         const newPass = document.getElementById('password').value;
         if (newPass) body.password = newPass;
         try{
-          await apiFetch('usuarios',`/${userId}`,{ method:'PUT', body });
+          const updated = await apiFetch('usuarios',`/${userId}`,{ method:'PUT', body });
           showToast('Perfil actualizado');
           document.getElementById('password').value = '';
-        }catch{ showToast('No se pudo actualizar'); }
+          if (updated) {
+            const currentToken = localStorage.getItem('token') || window.__session?.token;
+            const currentRole = localStorage.getItem('role') || window.__session?.role;
+            saveSession({
+              token: currentToken,
+              role: currentRole,
+              user: updated
+            });
+          }
+        }catch(err){
+          console.error('Error actualizando perfil', err);
+          showToast('No se pudo actualizar');
+        }
       });
     });
   </script>
@@ -66,7 +100,7 @@
           </div>
           <div>
             <label for="email">Correo</label>
-            <input class="input" id="email" type="email" disabled>
+            <input class="input" id="email" type="email" required>
           </div>
           <div>
             <label for="telefono">Teléfono</label>
@@ -77,8 +111,33 @@
             <input class="input" id="direccion" placeholder="Calle 123 #45-67">
           </div>
           <div>
+            <label for="ciudad">Ciudad</label>
+            <input class="input" id="ciudad" placeholder="Cali">
+          </div>
+          <div>
             <label for="password">Nueva contraseña</label>
             <input class="input" id="password" type="password" placeholder="(opcional)">
+          </div>
+          <div>
+            <label>Preferencias de contacto</label>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="prefContacto" value="email"> Correo electrónico</label>
+              <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="prefContacto" value="sms"> SMS</label>
+              <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="prefContacto" value="whatsapp"> WhatsApp</label>
+            </div>
+          </div>
+          <div>
+            <label for="categoriaPreferida">Categoría favorita</label>
+            <select class="input" id="categoriaPreferida">
+              <option value="">Selecciona una opción</option>
+              <option value="joyas">Joyas</option>
+              <option value="electronica">Electrónica</option>
+              <option value="herramientas">Herramientas</option>
+              <option value="hogar">Hogar</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="boletin"> Deseo recibir noticias y promociones</label>
           </div>
         </div>
         <button class="button" type="submit" style="margin-top:12px">Guardar</button>

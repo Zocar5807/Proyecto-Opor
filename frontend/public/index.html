@@ -3,50 +3,116 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>La Oportunidad - Compraventa</title>
-  <link rel="stylesheet" href="../assets/css/base.css">
-  <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
-  <link rel="stylesheet" href="../assets/css/theme.css">
-  <link rel="icon" href="../assets/img/logo.svg">
-  <meta name="description" content="Compra y vende con La Oportunidad. Productos, órdenes, contratos y más.">
+  <title>La Oportunidad - Inicio</title>
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
+  <link rel="icon" href="/assets/img/logo.svg">
   <style>
-    .hero{padding:56px 0}
-    .hero__title{font-size:40px;margin:0 0 8px}
-    .hero__subtitle{color:var(--color-text-muted);margin:0 0 24px}
-    .hero__cta{display:flex;gap:12px}
+    .hero {
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+      color: #FFFFFF;
+      padding: var(--spacing-3xl) var(--spacing-lg);
+      border-radius: var(--radius-xl);
+      text-align: center;
+      margin-bottom: var(--spacing-2xl);
+    }
+    .hero h1 {
+      font-size: var(--font-size-4xl);
+      margin: 0 0 var(--spacing-md);
+      color: #FFFFFF;
+    }
+    .hero p {
+      font-size: var(--font-size-lg);
+      margin: 0 0 var(--spacing-xl);
+      opacity: 0.95;
+    }
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: var(--spacing-lg);
+      margin-bottom: var(--spacing-2xl);
+    }
+    .feature-card {
+      padding: var(--spacing-lg);
+      text-align: center;
+    }
+    .feature-card__icon {
+      font-size: var(--font-size-4xl);
+      margin-bottom: var(--spacing-md);
+    }
+    .feature-card h3 {
+      margin: 0 0 var(--spacing-sm);
+    }
+    .cta-section {
+      text-align: center;
+      padding: var(--spacing-2xl);
+      background: var(--color-bg-tertiary);
+      border-radius: var(--radius-xl);
+    }
   </style>
   <script type="module">
-    import { renderHeader } from '../assets/js/ui.js';
-    window.addEventListener('DOMContentLoaded',()=>{
-      renderHeader({ active: 'home' });
-      const btn = document.getElementById('ctaProducts');
-      btn?.addEventListener('click', ()=> location.href='products.html');
-      const loginBtn = document.getElementById('ctaLogin');
-      loginBtn?.addEventListener('click', ()=> location.href='login.html');
+    import { renderHeader, showToast } from '/assets/js/ui.js';
+    import { getRole } from '/assets/js/auth.js';
+    
+    window.addEventListener('DOMContentLoaded', ()=>{
+      const role = getRole();
+      const isAuthenticated = !!localStorage.getItem('token');
+      
+      if (isAuthenticated) {
+        if (role === 'admin') {
+          renderHeader({ active:'dashboard', isAdmin:true });
+        } else if (role === 'empleado') {
+          renderHeader({ active:'dashboard', isEmployee:true });
+        } else {
+          renderHeader({ active:'products' });
+        }
+      } else {
+        renderHeader();
+      }
     });
   </script>
-  <script>
-    document.addEventListener('click', (e)=>{
-      if(e.target && e.target.id==='logoutLink'){
-        localStorage.removeItem('token');
-        localStorage.removeItem('role');
-        location.href='login.html';
-      }
-    })
-  </script>
-  </head>
+</head>
 <body>
   <header></header>
   <main class="container">
-    <section class="hero card">
-      <img src="../assets/img/logo.svg" alt="La Oportunidad" style="height:40px;margin-bottom:16px">
-      <h1 class="hero__title">Compraventa La Oportunidad</h1>
-      <p class="hero__subtitle">Encuentra los mejores productos y gestiona tus órdenes y contratos con una experiencia simple y moderna.</p>
-      <div class="hero__cta">
-        <button id="ctaProducts" class="button">Ver productos</button>
-        <button id="ctaLogin" class="button" style="background:#fff;color:var(--color-accent);border:1px solid #E3E8EB">Iniciar sesión</button>
+    <section class="hero">
+      <h1>Bienvenido a La Oportunidad</h1>
+      <p>Tu solución integral para préstamos, empeños y compraventa</p>
+      <div style="display:flex;gap:var(--spacing-md);justify-content:center;flex-wrap:wrap;">
+        <a href="products.html" class="button" style="background:#FFFFFF;color:var(--color-primary);">Ver Productos</a>
+        <a href="login.html" class="button button--outline" style="border-color:#FFFFFF;color:#FFFFFF;">Iniciar Sesión</a>
       </div>
+    </section>
+    
+    <section class="features">
+      <div class="card feature-card">
+        <div class="feature-card__icon">💰</div>
+        <h3>Préstamos Rápidos</h3>
+        <p>Solicita un préstamo con tus bienes como garantía. Proceso simple y rápido.</p>
+      </div>
+      <div class="card feature-card">
+        <div class="feature-card__icon">🛍️</div>
+        <h3>Compraventa</h3>
+        <p>Explora nuestro catálogo de productos disponibles en diferentes sucursales.</p>
+      </div>
+      <div class="card feature-card">
+        <div class="feature-card__icon">📋</div>
+        <h3>Gestión Digital</h3>
+        <p>Administra tus contratos, pagos y solicitudes desde cualquier lugar.</p>
+      </div>
+      <div class="card feature-card">
+        <div class="feature-card__icon">🔒</div>
+        <h3>Seguro y Confiable</h3>
+        <p>Procesos seguros con firma digital y seguimiento completo de tus transacciones.</p>
+      </div>
+    </section>
+    
+    <section class="cta-section">
+      <h2 style="margin-top:0">¿Listo para comenzar?</h2>
+      <p style="margin-bottom:var(--spacing-lg);">Regístrate ahora y accede a todos nuestros servicios</p>
+      <a href="register.html" class="button">Crear Cuenta</a>
     </section>
   </main>
 </body>

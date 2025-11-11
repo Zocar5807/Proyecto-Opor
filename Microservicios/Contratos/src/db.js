@@ -9,7 +9,7 @@ const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASS || '',
-  database: process.env.DB_NAME || 'base00',
+  database: process.env.DB_NAME || 'base20',
   waitForConnections: true,   // espera si no hay conexiones libres
   connectionLimit: 10,        // máximo conexiones simultáneas
   queueLimit: 0               // 0 = sin límite en cola

@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin - Transferencias - La Oportunidad</title>
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
+  <link rel="icon" href="/assets/img/logo.svg">
+  <style>
+    .filters-card {
+      background: var(--color-bg-elevated);
+      border-radius: var(--radius-xl);
+      padding: var(--spacing-5);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: var(--spacing-6);
+    }
+    
+    .filters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--spacing-4);
+    }
+    
+    .transfer-card {
+      background: var(--color-bg-elevated);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-5);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: var(--spacing-4);
+      border-left: 4px solid var(--color-primary);
+      transition: all var(--transition-base);
+    }
+    
+    .transfer-card:hover {
+      transform: translateX(4px);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .transfer-card__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: var(--spacing-4);
+      flex-wrap: wrap;
+      gap: var(--spacing-3);
+    }
+    
+    .transfer-card__title {
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-text-primary);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-2);
+    }
+    
+    .transfer-card__badge {
+      padding: var(--spacing-1) var(--spacing-3);
+      border-radius: var(--radius-full);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-semibold);
+      background: var(--color-primary-100);
+      color: var(--color-primary-700);
+    }
+    
+    .transfer-card__info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--spacing-4);
+      margin-top: var(--spacing-4);
+      padding-top: var(--spacing-4);
+      border-top: 1px solid var(--color-border-light);
+    }
+    
+    .transfer-card__info-item {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-1);
+    }
+    
+    .transfer-card__info-label {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .transfer-card__info-value {
+      font-size: var(--font-size-base);
+      color: var(--color-text-primary);
+      font-weight: var(--font-weight-medium);
+    }
+    
+    .transfer-card__amount {
+      font-size: var(--font-size-2xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-primary);
+    }
+    
+    .form-group {
+      margin-bottom: 0;
+    }
+    
+    .form-group label {
+      display: block;
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-text-primary);
+      margin-bottom: var(--spacing-2);
+      font-size: var(--font-size-sm);
+    }
+    
+    .form-group .input,
+    .form-group select {
+      width: 100%;
+      padding: var(--spacing-2) var(--spacing-3);
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-sm);
+      transition: all var(--transition-base);
+      background: var(--color-bg-elevated);
+    }
+    
+    .form-group .input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px var(--color-primary-100);
+    }
+  </style>
+  <script type="module">
+    import { requireAuth } from '/assets/js/auth.js';
+    import { renderHeader, showToast } from '/assets/js/ui.js';
+    import { apiFetch } from '/assets/js/api.js';
+    requireAuth();
+    
+    let allTransfers = [];
+    let allLiquidity = [];
+    
+    window.addEventListener('DOMContentLoaded', async () => {
+      renderHeader({ active: 'transfers' });
+      await loadLiquidity();
+      await loadTransfers();
+      setupFilters();
+    });
+    
+    async function loadLiquidity() {
+      try {
+        const response = await apiFetch('contratos', '/liquidez');
+        allLiquidity = Array.isArray(response) ? response : (response?.data || []);
+        updateFilterOptions();
+      } catch (err) {
+        console.error('Error cargando liquidez:', err);
+      }
+    }
+    
+    function updateFilterOptions() {
+      const origenSelect = document.getElementById('filterOrigen');
+      const destinoSelect = document.getElementById('filterDestino');
+      
+      if (!origenSelect || !destinoSelect) return;
+      
+      const options = allLiquidity.map(s => `
+        <option value="${escapeHtml(s.sucursal)}">${escapeHtml(s.sucursal)}</option>
+      `).join('');
+      
+      origenSelect.innerHTML = '<option value="">Todas las sucursales</option>' + options;
+      destinoSelect.innerHTML = '<option value="">Todas las sucursales</option>' + options;
+    }
+    
+    async function loadTransfers() {
+      const container = document.getElementById('transfersContainer');
+      const loadingState = document.getElementById('loadingState');
+      const emptyState = document.getElementById('emptyState');
+      
+      try {
+        loadingState.style.display = 'block';
+        container.style.display = 'none';
+        emptyState.style.display = 'none';
+        
+        const origen = document.getElementById('filterOrigen')?.value || '';
+        const destino = document.getElementById('filterDestino')?.value || '';
+        const fechaFrom = document.getElementById('filterFechaFrom')?.value || '';
+        const fechaTo = document.getElementById('filterFechaTo')?.value || '';
+        
+        let url = '/liquidez/transferencias?';
+        const params = [];
+        if (origen) params.push(`sucursal_origen=${encodeURIComponent(origen)}`);
+        if (destino) params.push(`sucursal_destino=${encodeURIComponent(destino)}`);
+        if (fechaFrom) params.push(`fecha_from=${encodeURIComponent(fechaFrom)}`);
+        if (fechaTo) params.push(`fecha_to=${encodeURIComponent(fechaTo)}`);
+        
+        url += params.join('&');
+        
+        const response = await apiFetch('contratos', url);
+        // La respuesta puede venir como array directo o dentro de data
+        allTransfers = Array.isArray(response) ? response : (response?.data || []);
+        if (!Array.isArray(allTransfers)) {
+          allTransfers = [];
+        }
+        
+        if (allTransfers.length === 0) {
+          loadingState.style.display = 'none';
+          emptyState.style.display = 'block';
+          return;
+        }
+        
+        renderTransfers();
+        container.style.display = 'block';
+        emptyState.style.display = 'none';
+      } catch (err) {
+        console.error('Error cargando transferencias:', err);
+        container.innerHTML = `
+          <div class="empty-state">
+            <h3 class="empty-state-title">Error al cargar transferencias</h3>
+            <p class="empty-state-text">${err.message || 'Hubo un problema conectando con el servidor'}</p>
+          </div>
+        `;
+        container.style.display = 'block';
+      } finally {
+        loadingState.style.display = 'none';
+      }
+    }
+    
+    function renderTransfers() {
+      const container = document.getElementById('transfersContainer');
+      
+      container.innerHTML = allTransfers.map(transfer => {
+        const id = transfer.id;
+        const origen = transfer.sucursal_origen || 'N/A';
+        const destino = transfer.sucursal_destino || 'N/A';
+        const monto = Number(transfer.monto || 0);
+        const fecha = transfer.fecha_transferencia || transfer.created_at;
+        const motivo = transfer.motivo || 'Sin motivo especificado';
+        const estado = transfer.estado || 'completada';
+        const realizadoPor = transfer.realizado_por || 'Sistema';
+        
+        return `
+          <article class="transfer-card">
+            <div class="transfer-card__header">
+              <h3 class="transfer-card__title">
+                🔄 Transferencia #${id}
+              </h3>
+              <span class="transfer-card__badge">${estado === 'completada' ? 'Completada' : estado}</span>
+            </div>
+            <div class="transfer-card__info">
+              <div class="transfer-card__info-item">
+                <span class="transfer-card__info-label">Origen</span>
+                <span class="transfer-card__info-value">🏢 ${escapeHtml(origen)}</span>
+              </div>
+              <div class="transfer-card__info-item">
+                <span class="transfer-card__info-label">Destino</span>
+                <span class="transfer-card__info-value">🏢 ${escapeHtml(destino)}</span>
+              </div>
+              <div class="transfer-card__info-item">
+                <span class="transfer-card__info-label">Monto</span>
+                <span class="transfer-card__info-value transfer-card__amount">${formatCurrency(monto)}</span>
+              </div>
+              <div class="transfer-card__info-item">
+                <span class="transfer-card__info-label">Fecha</span>
+                <span class="transfer-card__info-value">${formatDate(fecha)}</span>
+              </div>
+              ${realizadoPor ? `
+                <div class="transfer-card__info-item">
+                  <span class="transfer-card__info-label">Realizado por</span>
+                  <span class="transfer-card__info-value">${escapeHtml(realizadoPor)}</span>
+                </div>
+              ` : ''}
+            </div>
+            ${motivo && motivo !== 'Sin motivo especificado' ? `
+              <div style="margin-top: var(--spacing-4); padding-top: var(--spacing-4); border-top: 1px solid var(--color-border-light);">
+                <span class="transfer-card__info-label">Motivo</span>
+                <p style="margin: var(--spacing-2) 0 0; color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+                  ${escapeHtml(motivo)}
+                </p>
+              </div>
+            ` : ''}
+          </article>
+        `;
+      }).join('');
+    }
+    
+    function setupFilters() {
+      const filterOrigen = document.getElementById('filterOrigen');
+      const filterDestino = document.getElementById('filterDestino');
+      const filterFechaFrom = document.getElementById('filterFechaFrom');
+      const filterFechaTo = document.getElementById('filterFechaTo');
+      const clearBtn = document.getElementById('clearFilters');
+      
+      if (filterOrigen) filterOrigen.addEventListener('change', loadTransfers);
+      if (filterDestino) filterDestino.addEventListener('change', loadTransfers);
+      if (filterFechaFrom) filterFechaFrom.addEventListener('change', loadTransfers);
+      if (filterFechaTo) filterFechaTo.addEventListener('change', loadTransfers);
+      
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          if (filterOrigen) filterOrigen.value = '';
+          if (filterDestino) filterDestino.value = '';
+          if (filterFechaFrom) filterFechaFrom.value = '';
+          if (filterFechaTo) filterFechaTo.value = '';
+          loadTransfers();
+        });
+      }
+    }
+    
+    function formatCurrency(amount) {
+      return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0
+      }).format(amount || 0);
+    }
+    
+    function formatDate(dateStr) {
+      if (!dateStr) return '—';
+      try {
+        return new Date(dateStr).toLocaleDateString('es-ES', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch {
+        return dateStr;
+      }
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <div class="page-header">
+      <h1 class="page-title">Historial de Transferencias</h1>
+      <p class="text-muted">Consulta el historial de transferencias entre sucursales</p>
+    </div>
+    
+    <section class="filters-card">
+      <h2 style="margin: 0 0 var(--spacing-4); font-size: var(--font-size-lg);">Filtros</h2>
+      <div class="filters-grid">
+        <div class="form-group">
+          <label for="filterOrigen">Sucursal Origen</label>
+          <select id="filterOrigen" class="input">
+            <option value="">Todas las sucursales</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="filterDestino">Sucursal Destino</label>
+          <select id="filterDestino" class="input">
+            <option value="">Todas las sucursales</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="filterFechaFrom">Fecha Desde</label>
+          <input type="date" id="filterFechaFrom" class="input">
+        </div>
+        <div class="form-group">
+          <label for="filterFechaTo">Fecha Hasta</label>
+          <input type="date" id="filterFechaTo" class="input">
+        </div>
+        <div class="form-group" style="display: flex; align-items: flex-end;">
+          <button type="button" id="clearFilters" class="button button--outline" style="width: 100%;">
+            Limpiar Filtros
+          </button>
+        </div>
+      </div>
+    </section>
+    
+    <div id="loadingState" class="empty-state" style="display: none;">
+      <div class="spinner" style="margin: 0 auto;"></div>
+      <p class="empty-state-text">Cargando transferencias...</p>
+    </div>
+    
+    <div id="emptyState" class="empty-state" style="display: none;">
+      <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 7L12 3L4 7M20 7L12 11M20 7V17L12 21M12 11L4 7M12 11V21M4 7V17L12 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <h3 class="empty-state-title">No hay transferencias</h3>
+      <p class="empty-state-text">Las transferencias realizadas aparecerán aquí.</p>
+    </div>
+    
+    <section id="transfersContainer" style="display:none;"></section>
+  </main>
+</body>
+</html>
+

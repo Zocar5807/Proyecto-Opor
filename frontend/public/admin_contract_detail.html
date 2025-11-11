@@ -4,17 +4,261 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin - Contrato</title>
-  <link rel="stylesheet" href="../assets/css/base.css">
-  <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
-  <link rel="stylesheet" href="../assets/css/theme.css">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
+  <link rel="icon" href="/assets/img/logo.svg">
   <script type="module">
-    import { requireAuth } from '../assets/js/auth.js';
-    import { renderHeader, showToast } from '../assets/js/ui.js';
-    import { apiFetch } from '../assets/js/api.js';
-    requireAuth('admin');
+    import { requireAuth } from '/assets/js/auth.js';
+    import { renderHeader, showToast } from '/assets/js/ui.js';
+    import { apiFetch } from '/assets/js/api.js';
+    requireAuth(['admin', 'empleado']);
+    
     function id(){ const u=new URL(location.href); return u.searchParams.get('id'); }
+    
+    let contractData = null;
+    let pagosData = { pagos: [], saldo: { montoTotal: 0, totalPagado: 0, saldo: 0 } };
+    
     window.addEventListener('DOMContentLoaded', async ()=>{
+      renderHeader({ active:'contracts' });
+      await loadContract();
+      await loadPagos();
+      setupForms();
+    });
+    
+    async function loadContract() {
+      try {
+        const contract = await apiFetch('contratos', `/${id()}`);
+        contractData = contract;
+        renderContract();
+      } catch(err) {
+        console.error('Error cargando contrato:', err);
+        document.getElementById('contractDetail').innerHTML = '<div class="empty-state"><h3>Error al cargar el contrato</h3></div>';
+      }
+    }
+    
+    async function loadPagos() {
+      try {
+        const data = await apiFetch('contratos', `/${id()}/pagos`);
+        pagosData = data || { pagos: [], saldo: { montoTotal: 0, totalPagado: 0, saldo: 0 } };
+        renderPagos();
+      } catch(err) {
+        console.error('Error cargando pagos:', err);
+      }
+    }
+    
+    function renderContract() {
+      if (!contractData) return;
+      
+      const c = contractData;
+      const monto = c.monto || c.con_valor || 0;
+      const estado = c.estado || c.con_estado || 'A';
+      const fecha = c.fecha || c.con_fecha;
+      const fechaPlazo = c.fechaPlazo || c.con_fecha_plazo;
+      
+      document.getElementById('contractDetail').innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--spacing-md);flex-wrap:wrap;gap:var(--spacing-md);">
+          <div>
+            <h2 style="margin:0 0 var(--spacing-xs);">Contrato #${c.id || id()}</h2>
+            <p style="margin:0;color:var(--color-text-muted);">${formatDate(fecha)}</p>
+          </div>
+          <span class="badge ${getEstadoBadgeClass(estado)}">${getEstadoTexto(estado)}</span>
+        </div>
+        
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--spacing-md);">
+          <div>
+            <label style="font-size:var(--font-size-xs);color:var(--color-text-muted);">Monto del préstamo</label>
+            <p style="margin:var(--spacing-xs) 0 0;font-size:var(--font-size-xl);font-weight:var(--font-weight-bold);color:var(--color-primary);">
+              $${Number(monto).toLocaleString()}
+            </p>
+          </div>
+          <div>
+            <label style="font-size:var(--font-size-xs);color:var(--color-text-muted);">Total pagado</label>
+            <p style="margin:var(--spacing-xs) 0 0;font-size:var(--font-size-lg);color:var(--color-success);">
+              $${Number(pagosData.saldo.totalPagado).toLocaleString()}
+            </p>
+          </div>
+          <div>
+            <label style="font-size:var(--font-size-xs);color:var(--color-text-muted);">Saldo pendiente</label>
+            <p style="margin:var(--spacing-xs) 0 0;font-size:var(--font-size-lg);font-weight:var(--font-weight-bold);color:${pagosData.saldo.saldo > 0 ? 'var(--color-error)' : 'var(--color-success)'};">
+              $${Number(pagosData.saldo.saldo).toLocaleString()}
+            </p>
+          </div>
+          ${fechaPlazo ? `
+            <div>
+              <label style="font-size:var(--font-size-xs);color:var(--color-text-muted);">Fecha límite</label>
+              <p style="margin:var(--spacing-xs) 0 0;">${formatDate(fechaPlazo)}</p>
+            </div>
+          ` : ''}
+        </div>
+      `;
+      
+      // Actualizar select de estado
+      const estadoSelect = document.getElementById('estadoSelect');
+      if (estadoSelect) {
+        estadoSelect.value = estado;
+      }
+    }
+    
+    function renderPagos() {
+      const container = document.getElementById('pagosHistory');
+      if (!container) return;
+      
+      if (pagosData.pagos && pagosData.pagos.length > 0) {
+        container.innerHTML = `
+          <h3 style="margin-top:0">Historial de Pagos</h3>
+          <div style="margin-top:var(--spacing-md);">
+            ${pagosData.pagos.map(pago => `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--spacing-md);background:var(--color-bg-tertiary);border-radius:var(--radius-md);margin-bottom:var(--spacing-sm);">
+                <div>
+                  <strong>$${Number(pago.monto).toLocaleString()}</strong>
+                  <p style="margin:var(--spacing-xs) 0 0;color:var(--color-text-muted);font-size:var(--font-size-sm);">
+                    ${formatDate(pago.fecha_pago)} • ${pago.metodo_pago || 'No especificado'}
+                    ${pago.referencia ? ` • Ref: ${escapeHtml(pago.referencia)}` : ''}
+                  </p>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else {
+        container.innerHTML = '<p class="text-muted">No hay pagos registrados aún.</p>';
+      }
+    }
+    
+    function setupForms() {
+      const estadoForm = document.getElementById('estadoForm');
+      const entregarBtn = document.getElementById('entregarBtn');
+      const desembolsarBtn = document.getElementById('desembolsarBtn');
+      
+      if (estadoForm) {
+        estadoForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const nuevoEstado = document.getElementById('estadoSelect').value;
+          
+          try {
+            await apiFetch('contratos', `/${id()}/estado`, {
+              method: 'PATCH',
+              body: { nuevoEstado }
+            });
+            showToast('Estado actualizado');
+            await loadContract();
+          } catch(err) {
+            console.error('Error actualizando estado:', err);
+            showToast('No se pudo actualizar el estado');
+          }
+        });
+      }
+      
+      if (entregarBtn) {
+        entregarBtn.addEventListener('click', async () => {
+          if (confirm('¿Confirmas que el producto ha sido entregado al cliente?')) {
+            try {
+              await apiFetch('contratos', `/${id()}/entregar`, { method: 'PATCH' });
+              showToast('Producto marcado como entregado');
+            } catch(err) {
+              console.error('Error marcando como entregado:', err);
+              showToast('No se pudo marcar como entregado');
+            }
+          }
+        });
+      }
+      
+      if (desembolsarBtn) {
+        desembolsarBtn.addEventListener('click', async () => {
+          const monto = prompt('Ingresa el monto desembolsado:');
+          if (monto && !isNaN(Number(monto)) && Number(monto) > 0) {
+            try {
+              await apiFetch('contratos', `/${id()}/desembolsar`, {
+                method: 'PATCH',
+                body: { monto: Number(monto) }
+              });
+              showToast('Desembolso registrado');
+            } catch(err) {
+              console.error('Error registrando desembolso:', err);
+              showToast('No se pudo registrar el desembolso');
+            }
+          }
+        });
+      }
+    }
+    
+    function getEstadoBadgeClass(estado) {
+      const map = {
+        'A': 'badge--success',
+        'V': 'badge--error',
+        'C': 'badge--secondary',
+        'R': 'badge--info',
+        'P': 'badge--success'
+      };
+      return map[estado] || 'badge--secondary';
+    }
+    
+    function getEstadoTexto(estado) {
+      const map = {
+        'A': 'Activo',
+        'V': 'Vencido',
+        'C': 'Cancelado',
+        'R': 'Renovado',
+        'P': 'Pagado'
+      };
+      return map[estado] || estado;
+    }
+    
+    function formatDate(dateStr) {
+      if (!dateStr) return '—';
+      try {
+        return new Date(dateStr).toLocaleDateString('es-ES', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      } catch {
+        return dateStr;
+      }
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <h1>Detalle de Contrato</h1>
+    <section id="contractDetail" class="card" style="margin-bottom:var(--spacing-xl);"></section>
+    
+    <section class="card" style="margin-bottom:var(--spacing-xl);">
+      <h2 style="margin-top:0">Gestionar Contrato</h2>
+      <form id="estadoForm">
+        <div>
+          <label for="estadoSelect">Estado</label>
+          <select class="input" id="estadoSelect">
+            <option value="A">Activo</option>
+            <option value="V">Vencido</option>
+            <option value="C">Cancelado</option>
+            <option value="R">Renovado</option>
+            <option value="P">Pagado</option>
+          </select>
+        </div>
+        <button class="button" type="submit" style="margin-top:var(--spacing-md);">Actualizar Estado</button>
+      </form>
+      
+      <div style="display:flex;gap:var(--spacing-md);margin-top:var(--spacing-lg);flex-wrap:wrap;">
+        <button class="button button--outline" id="entregarBtn">Marcar Producto como Entregado</button>
+        <button class="button button--outline" id="desembolsarBtn">Registrar Desembolso</button>
+      </div>
+    </section>
+    
+    <section class="card" id="pagosHistory"></section>
+  </main>
+</body>
+</html>
+
       renderHeader({ active:'dashboard', isAdmin:true });
       const el = document.getElementById('detail');
       const select = document.getElementById('status');

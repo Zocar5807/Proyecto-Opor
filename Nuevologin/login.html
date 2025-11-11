@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iniciar sesión - La Oportunidad</title>
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme.css">
+  <link rel="icon" href="../assets/img/logo.svg">
+  <style>
+    .auth-container {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--color-bg);
+    }
+
+    .auth-brand {
+      background: var(--gradient-primary);
+      padding: 4rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .auth-brand::before {
+      content: '';
+      position: absolute;
+      width: 400px;
+      height: 400px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 50%;
+      top: -200px;
+      right: -100px;
+    }
+
+    .auth-brand::after {
+      content: '';
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 50%;
+      bottom: -150px;
+      left: -50px;
+    }
+
+    .auth-brand__content {
+      position: relative;
+      z-index: 1;
+      max-width: 480px;
+    }
+
+    .auth-brand__logo {
+      height: 64px;
+      filter: brightness(0) invert(1);
+      margin-bottom: 2rem;
+      animation: bounceIn 1s ease-out;
+    }
+
+    .auth-brand h1 {
+      color: #fff;
+      margin-bottom: 1rem;
+      font-size: 2.5rem;
+      font-weight: 800;
+    }
+
+    .auth-brand p {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 1.125rem;
+      line-height: 1.7;
+      margin-bottom: 2rem;
+    }
+
+    .auth-features {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      margin-top: 3rem;
+      text-align: left;
+    }
+
+    .auth-feature {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .auth-feature__icon {
+      width: 48px;
+      height: 48px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    .auth-feature h3 {
+      color: #fff;
+      margin: 0 0 0.25rem;
+      font-size: 1.125rem;
+    }
+
+    .auth-feature p {
+      color: rgba(255, 255, 255, 0.8);
+      margin: 0;
+      font-size: 0.9375rem;
+    }
+
+    .auth-form-container {
+      padding: 4rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow-y: auto;
+    }
+
+    .auth-form-wrapper {
+      max-width: 420px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .auth-form__header {
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    .auth-form__title {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: var(--color-text);
+      font-weight: 700;
+    }
+
+    .auth-form__subtitle {
+      color: var(--color-text-muted);
+      font-size: 1rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: var(--color-text);
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      margin-bottom: 1.5rem;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+
+    .alert--error {
+      background: rgba(255, 59, 48, 0.1);
+      color: var(--color-error);
+      border: 1px solid rgba(255, 59, 48, 0.2);
+    }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid #E5E9E7;
+    }
+
+    .auth-footer p {
+      color: var(--color-text-muted);
+      margin-bottom: 0;
+    }
+
+    .auth-footer a {
+      color: var(--color-accent);
+      font-weight: 600;
+      margin-left: 0.25rem;
+    }
+
+    @media (max-width: 968px) {
+      .auth-container {
+        grid-template-columns: 1fr;
+      }
+
+      .auth-brand {
+        display: none;
+      }
+
+      .auth-form-container {
+        padding: 2rem 1.5rem;
+      }
+    }
+  </style>
+  <script type="module">
+    import { saveSession } from '../assets/js/auth.js';
+    import { apiFetch } from '../assets/js/api.js';
+    import { showToast } from '../assets/js/ui.js';
+
+    function parseJwt(token) {
+      try { return JSON.parse(atob(token.split('.')[1])); } catch { return {}; }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('loginForm');
+      const alertBox = document.getElementById('alertBox');
+      const submitBtn = form.querySelector('button[type="submit"]');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        alertBox.classList.remove('show', 'alert--error');
+
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+
+        if (!username || !password) {
+          alertBox.classList.add('alert--error', 'show');
+          alertBox.textContent = 'Por favor completa todos los campos';
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Iniciando sesión...';
+
+        try {
+          const data = await apiFetch('usuarios', '/login', { method: 'POST', body: { username, password } });
+          const payload = parseJwt(data.token);
+          const role = payload.rol || payload.role || 'cliente';
+          saveSession({ token: data.token, role });
+
+          showToast('¡Bienvenido de vuelta!');
+          setTimeout(() => {
+            if (role === 'admin') {
+              location.href = 'admin_dashboard.html';
+            } else {
+              location.href = 'products.html';
+            }
+          }, 500);
+        } catch (err) {
+          alertBox.classList.add('alert--error', 'show');
+          alertBox.textContent = 'Credenciales inválidas. Verifica tu usuario y contraseña.';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Iniciar sesión';
+        }
+      });
+    });
+  </script>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-brand">
+      <div class="auth-brand__content">
+        <img src="../assets/img/logo.svg" alt="La Oportunidad" class="auth-brand__logo">
+        <h1>Tu Oportunidad Espera</h1>
+        <p>Accede a miles de oportunidades financieras que transformarán tu futuro. ¡No pierdas más tiempo!</p>
+
+        <div class="auth-features">
+          <div class="auth-feature">
+            <div class="auth-feature__icon">⚡</div>
+            <div>
+              <h3>Acceso Instantáneo</h3>
+              <p>Entra en segundos y comienza a explorar oportunidades</p>
+            </div>
+          </div>
+          <div class="auth-feature">
+            <div class="auth-feature__icon">🔒</div>
+            <div>
+              <h3>Seguridad Total</h3>
+              <p>Tus datos están protegidos con encriptación de nivel bancario</p>
+            </div>
+          </div>
+          <div class="auth-feature">
+            <div class="auth-feature__icon">🎯</div>
+            <div>
+              <h3>Oportunidades Exclusivas</h3>
+              <p>Descubre ofertas que solo están disponibles para nuestros usuarios</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="auth-form-container">
+      <div class="auth-form-wrapper">
+        <div class="auth-form__header">
+          <h2 class="auth-form__title">Iniciar sesión</h2>
+          <p class="auth-form__subtitle">Ingresa tus credenciales para continuar</p>
+        </div>
+
+        <div id="alertBox" class="alert"></div>
+
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="username">Usuario</label>
+            <input class="input" id="username" type="text" placeholder="Tu usuario" required autocomplete="username">
+          </div>
+
+          <div class="form-group">
+            <label for="password">Contraseña</label>
+            <input class="input" id="password" type="password" placeholder="Tu contraseña" required autocomplete="current-password">
+          </div>
+
+          <button class="button button--large" type="submit" style="width: 100%;">
+            Iniciar sesión
+          </button>
+        </form>
+
+        <div class="auth-footer">
+          <p>¿Aún no tienes cuenta? <a href="register.html">Regístrate ahora</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+

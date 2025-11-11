@@ -46,8 +46,9 @@ function authenticateJWT(req, res, next) {
 function authorizeRole(...allowedRoles) {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ ok: false, msg: 'No authenticated user' });
-    const role = (req.user.role || '').toString();
-    if (!allowedRoles.includes(role)) {
+    const role = String(req.user.role || req.user.raw?.rol || '').toLowerCase();
+    const allowed = allowedRoles.map(r => String(r).toLowerCase());
+    if (!allowed.includes(role)) {
       return res.status(403).json({ ok: false, msg: 'Forbidden: insufficient permissions' });
     }
     return next();

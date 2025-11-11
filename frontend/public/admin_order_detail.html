@@ -4,32 +4,186 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin - Orden</title>
-  <link rel="stylesheet" href="../assets/css/base.css">
-  <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
-  <link rel="stylesheet" href="../assets/css/theme.css">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
   <script type="module">
-    import { requireAuth } from '../assets/js/auth.js';
-    import { renderHeader, showToast } from '../assets/js/ui.js';
-    import { apiFetch } from '../assets/js/api.js';
+    import { requireAuth } from '/assets/js/auth.js';
+    import { renderHeader, showToast } from '/assets/js/ui.js';
+    import { apiFetch } from '/assets/js/api.js';
     requireAuth('admin');
     function id(){ const u=new URL(location.href); return u.searchParams.get('id'); }
+    function getEstadoBadge(estado) {
+      const estadoMap = {
+        'pendiente': { text: 'Pendiente', class: 'badge--warning' },
+        'en_proceso': { text: 'En Proceso', class: 'badge--info' },
+        'enviado': { text: 'Enviado', class: 'badge--secondary' },
+        'completado': { text: 'Completado', class: 'badge--success' },
+        'cancelado': { text: 'Cancelado', class: 'badge--error' }
+      };
+      const estadoLower = (estado || '').toLowerCase();
+      const estadoInfo = estadoMap[estadoLower] || { text: estado || '—', class: 'badge--secondary' };
+      return `<span class="badge ${estadoInfo.class}">${estadoInfo.text}</span>`;
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '—';
+      try {
+        return new Date(dateStr).toLocaleDateString('es-ES', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch {
+        return dateStr;
+      }
+    }
+
+    function formatCurrency(amount) {
+      return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0
+      }).format(amount || 0);
+    }
+
     window.addEventListener('DOMContentLoaded', async ()=>{
-      renderHeader({ active:'dashboard', isAdmin:true });
+      renderHeader({ active:'orders', isAdmin:true });
       const el = document.getElementById('detail');
       const select = document.getElementById('status');
+      
       try{
         const o = await apiFetch('ordenes',`/${id()}`);
         const oid = o.id_orden ?? o.id;
-        el.innerHTML = `<div class=\"card\"><h2>Orden #${oid}</h2><p>Usuario: ${o.id_usuario ?? o.userId ?? ''}</p><h3>Items</h3><ul>${(o.productos||o.items||[]).map(i=>`<li>${i.nombre ?? i.name} x ${i.cantidad ?? i.quantity}</li>`).join('')}</ul></div>`;
+        
+        // Parsear productos
+        let productos = [];
+        if (o.productos) {
+          if (typeof o.productos === 'string') {
+            try {
+              productos = JSON.parse(o.productos);
+            } catch (e) {
+              productos = [];
+            }
+          } else if (Array.isArray(o.productos)) {
+            productos = o.productos;
+          }
+        }
+        
+        // Información del cliente
+        const clienteNombre = (o.nombres_cliente || o.nombresCliente || '') + ' ' + (o.apellidos_cliente || o.apellidosCliente || '');
+        const clienteEmail = o.email_cliente || o.emailCliente || 'Sin email';
+        const clienteTelefono = o.telefono_cliente || o.telefonoCliente || 'Sin teléfono';
+        const clienteDireccion = o.direccion_cliente || o.direccionCliente || 'Sin dirección';
+        const clienteCedula = o.cedula_cliente || o.cedulaCliente || 'Sin cédula';
+        const clienteUsername = o.username_cliente || o.usernameCliente || o.id_usuario || '';
+        
+        el.innerHTML = `
+          <div class="grid" style="grid-template-columns: 1fr 1fr; gap: var(--spacing-6); margin-bottom: var(--spacing-6);">
+            <!-- Información de la Orden -->
+            <div class="card">
+              <div class="card__header">
+                <h2 style="margin: 0;">Orden #${oid}</h2>
+                ${getEstadoBadge(o.estado || o.status)}
+              </div>
+              <div class="card__body">
+                <div style="display: grid; gap: var(--spacing-4);">
+                  <div>
+                    <span style="font-size: var(--font-size-sm); color: var(--color-text-muted); display: block; margin-bottom: var(--spacing-1);">Fecha de creación</span>
+                    <strong>${formatDate(o.fecha_creacion || o.fechaCreacion || o.createdAt)}</strong>
+                  </div>
+                  <div>
+                    <span style="font-size: var(--font-size-sm); color: var(--color-text-muted); display: block; margin-bottom: var(--spacing-1);">Total</span>
+                    <strong style="font-size: var(--font-size-2xl); color: var(--color-primary);">${formatCurrency(o.total || o.monto_total || 0)}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Información del Cliente -->
+            <div class="card">
+              <div class="card__header">
+                <h3 style="margin: 0;">Información del Cliente</h3>
+              </div>
+              <div class="card__body">
+                <div style="display: grid; gap: var(--spacing-3);">
+                  <div>
+                    <span style="font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: var(--spacing-1);">Nombre completo</span>
+                    <strong>${clienteNombre.trim() || 'Sin nombre'}</strong>
+                  </div>
+                  <div>
+                    <span style="font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: var(--spacing-1);">Cédula</span>
+                    <span>${clienteCedula}</span>
+                  </div>
+                  <div>
+                    <span style="font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: var(--spacing-1);">Usuario</span>
+                    <span>${clienteUsername}</span>
+                  </div>
+                  <div>
+                    <span style="font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: var(--spacing-1);">Correo electrónico</span>
+                    <a href="mailto:${clienteEmail}" style="color: var(--color-primary);">${clienteEmail}</a>
+                  </div>
+                  <div>
+                    <span style="font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: var(--spacing-1);">Teléfono</span>
+                    <a href="tel:${clienteTelefono}" style="color: var(--color-primary);">${clienteTelefono}</a>
+                  </div>
+                  <div>
+                    <span style="font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: var(--spacing-1);">Dirección</span>
+                    <span>${clienteDireccion}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Productos -->
+          <div class="card">
+            <div class="card__header">
+              <h3 style="margin: 0;">Productos (${productos.length})</h3>
+            </div>
+            <div class="card__body">
+              ${productos.length > 0 ? `
+                <div style="display: grid; gap: var(--spacing-3);">
+                  ${productos.map((p, idx) => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-3); background: var(--color-bg-secondary); border-radius: var(--radius-lg);">
+                      <div>
+                        <strong style="display: block; margin-bottom: var(--spacing-1);">${p.nombre || p.name || 'Producto sin nombre'}</strong>
+                        <span style="font-size: var(--font-size-sm); color: var(--color-text-muted);">Cantidad: ${p.cantidad || p.quantity || 1}</span>
+                        ${p.precio ? `<span style="font-size: var(--font-size-sm); color: var(--color-text-muted); display: block; margin-top: var(--spacing-1);">Precio unitario: ${formatCurrency(p.precio)}</span>` : ''}
+                      </div>
+                      ${p.precio && p.cantidad ? `
+                        <div style="text-align: right;">
+                          <strong style="font-size: var(--font-size-lg); color: var(--color-primary);">${formatCurrency((p.precio || 0) * (p.cantidad || 1))}</strong>
+                        </div>
+                      ` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+              ` : '<p style="color: var(--color-text-muted); text-align: center; padding: var(--spacing-4);">No hay productos en esta orden</p>'}
+            </div>
+          </div>
+        `;
+        
         select.value = (o.estado ?? o.status ?? 'pendiente').toLowerCase();
-      }catch{}
+      } catch(err) {
+        console.error('Error cargando orden:', err);
+        el.innerHTML = `<div class="alert alert--error"><div class="alert__content"><div class="alert__title">Error</div><div class="alert__message">No se pudo cargar la información de la orden</div></div></div>`;
+      }
+      
       document.querySelector('form').addEventListener('submit', async (e)=>{
         e.preventDefault();
         try{
           await apiFetch('ordenes',`/${id()}`,{ method:'PATCH', body:{ status: select.value } });
-          showToast('Estado actualizado');
-        }catch{ showToast('No se pudo actualizar'); }
+          showToast('Estado actualizado correctamente');
+          // Recargar la página para mostrar el nuevo estado
+          setTimeout(() => location.reload(), 1000);
+        }catch(err){
+          console.error('Error actualizando estado:', err);
+          showToast('No se pudo actualizar el estado');
+        }
       });
     });
   </script>
@@ -37,19 +191,32 @@
 <body>
   <header></header>
   <main class="container">
-    <h1>Orden</h1>
-    <section id="detail" style="margin-bottom:16px"></section>
+    <div class="page-header">
+      <h1 class="page-title">Detalle de Orden</h1>
+      <a href="admin_orders.html" class="button button--outline">← Volver a Órdenes</a>
+    </div>
+    
+    <section id="detail" style="margin-bottom: var(--spacing-6);"></section>
+    
     <section class="card">
-      <form>
-        <label for="status">Estado</label>
-        <select id="status" class="input">
-          <option value="pendiente">Pendiente</option>
-          <option value="enviado">Enviado</option>
-          <option value="completado">Completado</option>
-          <option value="cancelado">Cancelado</option>
-        </select>
-        <button class="button" type="submit" style="margin-top:12px">Guardar</button>
-      </form>
+      <div class="card__header">
+        <h3 style="margin: 0;">Cambiar Estado</h3>
+      </div>
+      <div class="card__body">
+        <form style="display: flex; gap: var(--spacing-4); align-items: end; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 200px;">
+            <label for="status" class="form-label">Estado de la orden</label>
+            <select id="status" class="input">
+              <option value="pendiente">Pendiente</option>
+              <option value="en_proceso">En Proceso</option>
+              <option value="enviado">Enviado</option>
+              <option value="completado">Completado</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+          </div>
+          <button class="button" type="submit">Guardar Cambios</button>
+        </form>
+      </div>
     </section>
   </main>
 </body>

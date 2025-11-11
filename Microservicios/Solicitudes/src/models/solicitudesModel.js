@@ -1,14 +1,6 @@
 // /Solicitudes/src/models/solicitudesModel.js
-const mysql = require('mysql2/promise');
-
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASS || '',
-  database: process.env.DB_NAME || 'base00',
-  waitForConnections: true,
-  connectionLimit: Number(process.env.DB_CONN_LIMIT) || 10
-});
+// Usar el pool compartido desde db.js
+const pool = require('../db');
 
 /**
  * crearSolicitud(payload)
@@ -94,8 +86,8 @@ async function obtenerSolicitudes(filters = {}) {
   const [countRows] = await pool.query(`SELECT COUNT(1) as total ${sql}`, params);
   const total = countRows && countRows[0] ? countRows[0].total : 0;
 
-  // rows
-  const [rows] = await pool.query(`SELECT id, usuario_id, nombre_producto, estado, created_at ${sql} ORDER BY created_at DESC LIMIT ? OFFSET ?`, [...params, limit, offset]);
+  // rows - incluir monto_aprobado y fecha_respuesta para gráficas
+  const [rows] = await pool.query(`SELECT id, usuario_id, nombre_producto, estado, categoria, cliente_json, producto_json, created_at, monto_aprobado, fecha_respuesta ${sql} ORDER BY created_at DESC LIMIT ? OFFSET ?`, [...params, limit, offset]);
 
   return { rows, total, page, limit };
 }
@@ -113,7 +105,7 @@ async function obtenerSolicitudesPorEstado(estado) {
  * Devuelve registro completo, con cliente/producto parseados si existen.
  */
 async function obtenerSolicitudPorId(id) {
-  const [rows] = await pool.query('SELECT * FROM solicitudes WHERE id = ? LIMIT 1', [id]);
+  const [rows] = await pool.query('SELECT *, monto_aprobado, con_tasa as tasa, plazo, fecha_plazo, sucursal FROM solicitudes WHERE id = ? LIMIT 1', [id]);
   if (!rows || rows.length === 0) return null;
   const r = rows[0];
 
@@ -187,11 +179,64 @@ async function actualizarEstado(id, nuevoEstado, adminId = null, motivo = null) 
   }
 }
 
+/**
+ * actualizarMontoAprobado(id, monto, tasa, plazo, fechaPlazo, sucursal)
+ * Actualiza los campos de monto aprobado cuando se aprueba una solicitud
+ */
+async function actualizarMontoAprobado(id, monto, tasa, plazo, fechaPlazo, sucursal) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    
+    const sets = [];
+    const params = [];
+    
+    if (monto !== undefined && monto !== null) {
+      sets.push('monto_aprobado = ?');
+      params.push(Number(monto));
+    }
+    if (tasa !== undefined && tasa !== null) {
+      sets.push('con_tasa = ?');
+      params.push(Number(tasa));
+    }
+    if (plazo !== undefined && plazo !== null) {
+      sets.push('plazo = ?');
+      params.push(Number(plazo));
+    }
+    if (fechaPlazo !== undefined && fechaPlazo !== null) {
+      sets.push('fecha_plazo = ?');
+      params.push(fechaPlazo);
+    }
+    if (sucursal !== undefined && sucursal !== null) {
+      sets.push('sucursal = ?');
+      params.push(String(sucursal));
+    }
+    
+    if (sets.length === 0) {
+      await conn.rollback();
+      return { affectedRows: 0 };
+    }
+    
+    params.push(id);
+    const sql = `UPDATE solicitudes SET ${sets.join(', ')} WHERE id = ?`;
+    const [result] = await conn.execute(sql, params);
+    
+    await conn.commit();
+    return { affectedRows: result.affectedRows };
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
 module.exports = {
   crearSolicitud,
   obtenerSolicitudes,
   obtenerSolicitudesPorEstado,
   obtenerSolicitudPorId,
-  actualizarEstado
+  actualizarEstado,
+  actualizarMontoAprobado
 };
 

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard Empleado - La Oportunidad</title>
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
+  <link rel="icon" href="/assets/img/logo.svg">
+  <style>
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: var(--spacing-lg);
+      margin-bottom: var(--spacing-xl);
+    }
+    .stat-card {
+      padding: var(--spacing-lg);
+    }
+    .stat-card h3 {
+      margin: 0 0 var(--spacing-sm);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .stat-card .value {
+      font-size: var(--font-size-3xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-primary);
+      margin: 0;
+    }
+    .stat-card .subtitle {
+      margin: var(--spacing-xs) 0 0;
+      font-size: var(--font-size-sm);
+      color: var(--color-text-muted);
+    }
+  </style>
+  <script type="module">
+    import { requireAuth } from '/assets/js/auth.js';
+    import { renderHeader } from '/assets/js/ui.js';
+    import { apiFetch } from '/assets/js/api.js';
+    requireAuth(['empleado', 'admin']);
+    
+    window.addEventListener('DOMContentLoaded', async ()=>{
+      renderHeader({ active:'dashboard' });
+      await loadStats();
+    });
+    
+    async function loadStats() {
+      try {
+        const [orders, requests, contracts] = await Promise.all([
+          apiFetch('ordenes','').catch(()=>[]),
+          apiFetch('solicitudes','').catch(()=>[]),
+          apiFetch('contratos','').catch(()=>[])
+        ]);
+        
+        const toCount = (x)=> Array.isArray(x) ? x.length : (x && typeof x === 'object' && Array.isArray(x.data) ? x.data.length : 0);
+        
+        const ordersCount = toCount(orders);
+        const requestsCount = toCount(requests);
+        const contractsCount = toCount(contracts);
+        
+        const pendientesOrders = Array.isArray(orders) ? orders.filter(o => (o.estado || '').toLowerCase() === 'pendiente').length : 0;
+        const pendientesRequests = Array.isArray(requests) ? requests.filter(r => (r.estado || '').toLowerCase() === 'pendiente').length : 0;
+        
+        document.getElementById('orders').querySelector('.value').textContent = ordersCount;
+        document.getElementById('orders').querySelector('.subtitle').textContent = `${pendientesOrders} pendientes`;
+        
+        document.getElementById('requests').querySelector('.value').textContent = requestsCount;
+        document.getElementById('requests').querySelector('.subtitle').textContent = `${pendientesRequests} pendientes`;
+        
+        document.getElementById('contracts').querySelector('.value').textContent = contractsCount;
+      } catch(err) {
+        console.error('Error cargando estadísticas:', err);
+      }
+    }
+  </script>
+</head>
+<body>
+  <header></header>
+  <main class="container">
+    <div class="page-header">
+      <h1 class="page-title">Dashboard Empleado</h1>
+      <p class="text-muted">Panel de control para empleados</p>
+    </div>
+    
+    <section class="stats-grid">
+      <div id="orders" class="card stat-card">
+        <h3>Órdenes</h3>
+        <p class="value">—</p>
+        <p class="subtitle">Total</p>
+      </div>
+      <div id="requests" class="card stat-card">
+        <h3>Solicitudes</h3>
+        <p class="value">—</p>
+        <p class="subtitle">Total</p>
+      </div>
+      <div id="contracts" class="card stat-card">
+        <h3>Contratos</h3>
+        <p class="value">—</p>
+        <p class="subtitle">Activos</p>
+      </div>
+    </section>
+    
+    <section class="card">
+      <h2 style="margin-top:0">Accesos Rápidos</h2>
+      <div style="display:flex;flex-direction:column;gap:var(--spacing-sm);">
+        <a href="admin_orders.html" class="button button--outline">Gestionar Órdenes</a>
+        <a href="admin_requests.html" class="button button--outline">Revisar Solicitudes</a>
+        <a href="admin_contracts.html" class="button button--outline">Gestionar Contratos</a>
+        <a href="profile.html" class="button button--outline">Mi Perfil</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
+
+
+
+
+
+
+
+

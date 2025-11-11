@@ -21,7 +21,9 @@ router.post('/', authenticateJWT, async (req, res) => {
 
     // Obtener info de usuario desde microservicio usuarios
     const usuarioId = req.user.id;
-    const userResp = await axios.get(`${USUARIOS_URL}/${usuarioId}`);
+    const userResp = await axios.get(`${USUARIOS_URL}/${usuarioId}`, {
+      headers: { Authorization: req.headers['authorization'] }
+    });
     if (!userResp.data || !userResp.data.data) {
       return res.status(404).json({ ok: false, msg: 'Usuario no encontrado' });
     }
@@ -89,7 +91,7 @@ router.post('/', authenticateJWT, async (req, res) => {
     }
 
     await conn.commit();
-    res.status(201).json({ ok: true, msg: 'Orden creada', data: result });
+    res.status(201).json({ ok: true, msg: 'Orden creada', data: { id_orden: result.idOrden, ...result } });
   } catch (err) {
     await conn.rollback();
     console.error('Error POST /ordenes', err);
@@ -128,15 +130,58 @@ router.get('/', authenticateJWT, async (req, res) => {
   }
 });
 
-// PATCH /ordenes/:id -> actualizar estado (admin)
-router.patch('/:id', authenticateJWT, requireAdmin, async (req, res) => {
+// PATCH /ordenes/:id -> actualizar estado (admin o dueño de la orden)
+router.patch('/:id', authenticateJWT, async (req, res) => {
   const id = req.params.id;
   const nuevoEstado = (req.body && (req.body.status || req.body.estado)) || null;
   if (!nuevoEstado) {
     return res.status(400).json({ ok:false, msg:'Debe enviar status/estado' });
   }
+  
   const conn = await pool.getConnection();
   try {
+    // Verificar que la orden existe y obtener el id_usuario
+    const [ordenRows] = await conn.query('SELECT id_usuario FROM ordenes WHERE id_orden = ?', [id]);
+    if (ordenRows.length === 0) {
+      return res.status(404).json({ ok:false, msg:'Orden no encontrada' });
+    }
+    
+    const ordenUsuarioId = ordenRows[0].id_usuario;
+    const usuarioActualId = req.user.id;
+    const usuarioRaw = req.user.raw || {};
+    const rolToken = String(req.user.rol || req.user.role || '').toLowerCase();
+    const nivel = usuarioRaw.usu_nivel;
+    const rolRaw = String(usuarioRaw.rol || '').toLowerCase();
+    const esAdmin = rolToken === 'admin' || rolRaw === 'admin' || Number(nivel) === 5;
+    const esEmpleado = rolToken === 'empleado' || rolRaw === 'empleado' || Number(nivel) === 4;
+    
+    // Verificar permisos: admin o empleado pueden cambiar cualquier orden, el cliente solo la suya
+    const puedeEditar = esAdmin || esEmpleado || (ordenUsuarioId && ordenUsuarioId === usuarioActualId);
+    
+    if (!puedeEditar) {
+      return res.status(403).json({ 
+        ok:false, 
+        msg:'No tienes permiso para modificar esta orden',
+        debug: {
+          ordenUsuarioId,
+          usuarioActualId,
+          esAdmin,
+          puedeEditar
+        }
+      });
+    }
+    
+    // Si es cliente (no admin ni empleado), solo puede cancelar
+    if (!esAdmin && !esEmpleado) {
+      const nuevoEstadoLower = String(nuevoEstado).toLowerCase();
+      if (nuevoEstadoLower !== 'cancelado' && nuevoEstadoLower !== 'cancelar') {
+        return res.status(403).json({ 
+          ok:false, 
+          msg:'Los clientes solo pueden cancelar sus órdenes, no cambiar a otros estados'
+        });
+      }
+    }
+    
     await conn.beginTransaction();
     try {
       const [result] = await conn.execute('UPDATE ordenes SET estado = ? WHERE id_orden = ?', [String(nuevoEstado), id]);

@@ -1,3 +1,182 @@
+/* ============================================
+   SISTEMA DE DISEÑO MODERNO - VERDE PROFESIONAL
+   ============================================ */
+
+:root {
+  /* ===== PALETA DE COLORES VERDE ===== */
+  /* Verde Principal - Base del diseño */
+  --color-primary: #16A34A;           /* Verde esmeralda vibrante */
+  --color-primary-50: #F0FDF4;        /* Verde muy claro (fondos) */
+  --color-primary-100: #DCFCE7;       /* Verde claro */
+  --color-primary-200: #BBF7D0;       /* Verde suave */
+  --color-primary-300: #86EFAC;       /* Verde medio-claro */
+  --color-primary-400: #4ADE80;       /* Verde medio */
+  --color-primary-500: #22C55E;       /* Verde estándar */
+  --color-primary-600: #16A34A;       /* Verde principal (usado) */
+  --color-primary-700: #15803D;       /* Verde oscuro */
+  --color-primary-800: #166534;       /* Verde muy oscuro */
+  --color-primary-900: #14532D;       /* Verde casi negro */
+  
+  /* Verde para estados */
+  --color-success: #16A34A;
+  --color-success-light: #4ADE80;
+  --color-success-dark: #15803D;
+  
+  /* Colores complementarios */
+  --color-secondary: #3B82F6;         /* Azul para acciones secundarias */
+  --color-secondary-light: #60A5FA;
+  --color-secondary-dark: #2563EB;
+  
+  --color-accent: #F59E0B;            /* Naranja para acentos */
+  --color-accent-light: #FBBF24;
+  --color-accent-dark: #D97706;
+  
+  /* Estados */
+  --color-warning: #F59E0B;
+  --color-error: #DC2626;             /* Rojo más suave */
+  --color-error-light: #FEE2E2;
+  --color-info: #3B82F6;
+  
+  /* ===== FONDOS Y SUPERFICIES ===== */
+  --color-bg: #FEFCF9;                 /* Fondo principal - crema suave */
+  --color-bg-secondary: #FAF8F4;       /* Fondo secundario - crema claro */
+  --color-bg-tertiary: #F5F3EF;        /* Fondo terciario - crema medio */
+  --color-bg-elevated: #FFFFFF;        /* Superficies elevadas - blanco puro */
+  --color-bg-hover: #F5F3EF;           /* Hover states */
+  --color-bg-active: #F0EDE8;          /* Active states */
+  
+  /* ===== TEXTO Y LEGIBILIDAD ===== */
+  --color-text: #111827;               /* Texto principal - casi negro */
+  --color-text-primary: #111827;       /* Texto principal */
+  --color-text-secondary: #4B5563;      /* Texto secundario - gris medio */
+  --color-text-muted: #6B7280;         /* Texto atenuado - gris */
+  --color-text-light: #9CA3AF;         /* Texto muy claro */
+  --color-text-inverse: #FFFFFF;       /* Texto sobre fondos oscuros */
+  
+  /* ===== BORDES Y DIVISORES ===== */
+  --color-border: #E5E7EB;            /* Borde estándar */
+  --color-border-light: #F3F4F6;      /* Borde muy claro */
+  --color-border-medium: #D1D5DB;      /* Borde medio */
+  --color-border-dark: #9CA3AF;        /* Borde oscuro */
+  --color-border-focus: #16A34A;       /* Borde en focus */
+  
+  /* ===== SOMBRAS MODERNAS ===== */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.12);
+  
+  /* Sombras con color verde para elementos destacados */
+  --shadow-primary: 0 4px 14px 0 rgba(22, 163, 74, 0.15);
+  --shadow-primary-lg: 0 10px 25px 0 rgba(22, 163, 74, 0.2);
+  
+  /* ===== ESPACIADO SISTEMÁTICO ===== */
+  --spacing-0: 0;
+  --spacing-1: 0.25rem;    /* 4px */
+  --spacing-2: 0.5rem;     /* 8px */
+  --spacing-3: 0.75rem;    /* 12px */
+  --spacing-4: 1rem;       /* 16px */
+  --spacing-5: 1.25rem;    /* 20px */
+  --spacing-6: 1.5rem;     /* 24px */
+  --spacing-8: 2rem;       /* 32px */
+  --spacing-10: 2.5rem;    /* 40px */
+  --spacing-12: 3rem;      /* 48px */
+  --spacing-16: 4rem;      /* 64px */
+  --spacing-20: 5rem;      /* 80px */
+  
+  /* Aliases para compatibilidad */
+  --spacing-xs: var(--spacing-1);
+  --spacing-sm: var(--spacing-2);
+  --spacing-md: var(--spacing-4);
+  --spacing-lg: var(--spacing-6);
+  --spacing-xl: var(--spacing-8);
+  --spacing-2xl: var(--spacing-12);
+  --spacing-3xl: var(--spacing-16);
+  
+  /* ===== TIPOGRAFÍA MEJORADA ===== */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  --font-family-heading: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  --font-family-mono: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Fira Mono', 'Droid Sans Mono', 'Source Code Pro', monospace;
+  
+  /* Tamaños de fuente - Escala tipográfica mejorada */
+  --font-size-xs: 0.75rem;      /* 12px */
+  --font-size-sm: 0.875rem;     /* 14px */
+  --font-size-base: 1rem;       /* 16px */
+  --font-size-lg: 1.125rem;     /* 18px */
+  --font-size-xl: 1.25rem;      /* 20px */
+  --font-size-2xl: 1.5rem;      /* 24px */
+  --font-size-3xl: 1.875rem;    /* 30px */
+  --font-size-4xl: 2.25rem;     /* 36px */
+  --font-size-5xl: 3rem;        /* 48px */
+  
+  /* Pesos de fuente */
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  
+  /* Altura de línea - Mejor legibilidad */
+  --line-height-none: 1;
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
+  
+  /* ===== BORDES REDONDEADOS ===== */
+  --radius-none: 0;
+  --radius-sm: 0.25rem;      /* 4px */
+  --radius-md: 0.375rem;     /* 6px */
+  --radius-lg: 0.5rem;       /* 8px */
+  --radius-xl: 0.75rem;      /* 12px */
+  --radius-2xl: 1rem;        /* 16px */
+  --radius-3xl: 1.5rem;      /* 24px */
+  --radius-full: 9999px;
+  
+  /* ===== TRANSICIONES SUAVES ===== */
+  --transition-fast: 100ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  
+  /* ===== Z-INDEX LAYERS ===== */
+  --z-base: 0;
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  --z-toast: 1080;
+  
+  /* ===== BREAKPOINTS (para uso en JS) ===== */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+}
+
+/* ===== UTILIDADES DE COLOR ===== */
+.text-primary { color: var(--color-primary); }
+.text-success { color: var(--color-success); }
+.text-error { color: var(--color-error); }
+.text-warning { color: var(--color-warning); }
+.text-muted { color: var(--color-text-muted); }
+.text-secondary { color: var(--color-text-secondary); }
+
+.bg-primary { background-color: var(--color-primary); }
+.bg-success { background-color: var(--color-success); }
+.bg-error { background-color: var(--color-error); }
+.bg-white { background-color: #FFFFFF; }
+.bg-gray-50 { background-color: var(--color-bg-secondary); }
+.bg-gray-100 { background-color: var(--color-bg-tertiary); }
+
 .button{background:var(--color-primary);color:#fff;border:none;padding:12px 18px;border-radius:999px;cursor:pointer;box-shadow:var(--shadow);transform:translateZ(0);transition:transform .15s ease, background .2s ease, box-shadow .2s ease}
 .button:hover{background:var(--color-primary-hover);transform:translateY(-1px);box-shadow:0 14px 28px rgba(22,119,67,.16), 0 8px 10px rgba(0,0,0,.06)}
 .card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;border:1px solid rgba(47,173,95,.06)}

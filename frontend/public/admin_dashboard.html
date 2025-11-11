@@ -4,54 +4,825 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin - Dashboard</title>
-  <link rel="stylesheet" href="../assets/css/base.css">
-  <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
-  <link rel="stylesheet" href="../assets/css/theme.css">
-  <link rel="icon" href="../assets/img/logo.svg">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
+  <link rel="icon" href="/assets/img/logo.svg">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
-    .stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
-    .stat h3{margin:0 0 8px}
-    .stat p{margin:0;color:var(--color-text-muted)}
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: var(--spacing-lg);
+      margin-bottom: var(--spacing-xl);
+    }
+    .stat-card {
+      padding: var(--spacing-lg);
+    }
+    .stat-card h3 {
+      margin: 0 0 var(--spacing-sm);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .stat-card .value {
+      font-size: var(--font-size-3xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-primary);
+      margin: 0;
+    }
+    .stat-card .subtitle {
+      margin: var(--spacing-xs) 0 0;
+      font-size: var(--font-size-sm);
+      color: var(--color-text-muted);
+    }
+    .chart-container {
+      background: var(--color-bg-secondary);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-lg);
+      margin-bottom: var(--spacing-lg);
+    }
+    .chart-title {
+      margin: 0 0 var(--spacing-md);
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-semibold);
+    }
+    .chart-wrapper {
+      position: relative;
+      height: 300px;
+      margin-top: var(--spacing-md);
+    }
+    .chart-wrapper.small {
+      height: 200px;
+    }
+    .liquidity-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: var(--spacing-md);
+      margin-top: var(--spacing-md);
+    }
+    .liquidity-card {
+      padding: var(--spacing-md);
+      background: var(--color-bg-tertiary);
+      border-radius: var(--radius-lg);
+      border-left: 4px solid var(--color-primary);
+    }
+    .liquidity-card.low {
+      border-left-color: var(--color-error);
+    }
+    .liquidity-card.medium {
+      border-left-color: var(--color-warning);
+    }
+    .liquidity-card h4 {
+      margin: 0 0 var(--spacing-xs);
+      font-size: var(--font-size-base);
+    }
+    .liquidity-card .amount {
+      font-size: var(--font-size-2xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-primary);
+      margin: var(--spacing-xs) 0;
+    }
+    .quick-actions {
+      display: flex;
+      gap: var(--spacing-md);
+      flex-wrap: wrap;
+      margin-top: var(--spacing-lg);
+    }
+    .spark-badge {
+      display: inline-block;
+      padding: var(--spacing-xs) var(--spacing-sm);
+      background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+      color: white;
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-bold);
+      margin-left: var(--spacing-sm);
+    }
   </style>
   <script type="module">
-    import { requireAuth, getRole } from '../assets/js/auth.js';
-    import { renderHeader } from '../assets/js/ui.js';
-    import { apiFetch } from '../assets/js/api.js';
+    import { requireAuth } from '/assets/js/auth.js';
+    import { renderHeader, showToast } from '/assets/js/ui.js';
+    import { apiFetch } from '/assets/js/api.js';
     requireAuth('admin');
+    
+    let charts = {};
+    
     window.addEventListener('DOMContentLoaded', async ()=>{
-      renderHeader({ active:'dashboard', isAdmin:true });
-      const ids = ['users','products','orders','requests','contracts'];
+      renderHeader({ active:'dashboard' });
+      await loadStats();
+      await loadLiquidity();
+      await loadAnalytics();
+      await loadSparkAnalytics();
+    });
+    
+    async function loadStats() {
       try {
-        const [u,p,o,s,c] = await Promise.all([
+        const [users, products, orders, requests, contracts] = await Promise.all([
           apiFetch('usuarios','/').catch(()=>null),
           apiFetch('productos','').catch(()=>null),
           apiFetch('ordenes','').catch(()=>null),
           apiFetch('solicitudes','').catch(()=>null),
           apiFetch('contratos','').catch(()=>null)
         ]);
-        const toCount = (x)=> Array.isArray(x) ? x.length : (x && typeof x === 'object' && Array.isArray(x.data) ? x.data.length : (x?.count ?? x?.total ?? '—'));
-        const data = { users: toCount(u), products: toCount(p), orders: toCount(o), requests: toCount(s), contracts: toCount(c) };
-        ids.forEach(id=>{
-          const el = document.getElementById(id);
-          if (el) el.querySelector('strong').textContent = data[id] ?? '—';
-        })
-      } catch {}
-    });
+        
+        const toCount = (x)=> Array.isArray(x) ? x.length : (x && typeof x === 'object' && Array.isArray(x.data) ? x.data.length : (x?.count ?? x?.total ?? 0));
+        
+        document.getElementById('users').querySelector('.value').textContent = toCount(users);
+        document.getElementById('products').querySelector('.value').textContent = toCount(products);
+        document.getElementById('orders').querySelector('.value').textContent = toCount(orders);
+        document.getElementById('requests').querySelector('.value').textContent = toCount(requests);
+        document.getElementById('contracts').querySelector('.value').textContent = toCount(contracts);
+        
+        if (requests && Array.isArray(requests)) {
+          const pendientes = requests.filter(r => (r.estado || '').toLowerCase() === 'pendiente').length;
+          document.getElementById('requests').querySelector('.subtitle').textContent = `${pendientes} pendientes`;
+        }
+        
+        if (orders && Array.isArray(orders)) {
+          const pendientes = orders.filter(o => (o.estado || '').toLowerCase() === 'pendiente').length;
+          document.getElementById('orders').querySelector('.subtitle').textContent = `${pendientes} pendientes`;
+        }
+      } catch(err) {
+        console.error('Error cargando estadísticas:', err);
+      }
+    }
+    
+    async function loadLiquidity() {
+      try {
+        const liquidez = await apiFetch('contratos', '/liquidez');
+        const container = document.getElementById('liquidityContainer');
+        
+        if (!liquidez || liquidez.length === 0) {
+          container.innerHTML = '<p class="text-muted">No hay datos de liquidez disponibles.</p>';
+          return;
+        }
+        
+        container.innerHTML = liquidez.map(suc => {
+          const liquidezActual = Number(suc.liquidez_actual || 0);
+          const liquidezMinima = Number(suc.liquidez_minima || 0);
+          const porcentaje = liquidezMinima > 0 ? (liquidezActual / liquidezMinima) * 100 : 100;
+          const nivel = porcentaje < 50 ? 'low' : porcentaje < 80 ? 'medium' : '';
+          
+          return `
+            <div class="liquidity-card ${nivel}">
+              <h4>${escapeHtml(suc.sucursal)}</h4>
+              <div class="amount">$${liquidezActual.toLocaleString()}</div>
+              <p style="margin:0;font-size:var(--font-size-sm);color:var(--color-text-muted);">
+                Mínimo: $${liquidezMinima.toLocaleString()}
+              </p>
+            </div>
+          `;
+        }).join('');
+      } catch(err) {
+        console.error('Error cargando liquidez:', err);
+        document.getElementById('liquidityContainer').innerHTML = '<p class="text-muted">Error al cargar liquidez.</p>';
+      }
+    }
+    
+    async function loadAnalytics() {
+      try {
+        const [requests, contracts, orders, products] = await Promise.all([
+          apiFetch('solicitudes','').catch(()=>[]),
+          apiFetch('contratos','').catch(()=>[]),
+          apiFetch('ordenes','').catch(()=>[]),
+          apiFetch('productos','').catch(()=>[])
+        ]);
+        
+        // Gráfica 1: Categorías más empeñadas (Barras)
+        // Función para normalizar categorías a las principales
+        function normalizarCategoria(cat) {
+          if (!cat || typeof cat !== 'string') return 'Mercancía'; // Default
+          
+          const catLower = cat.toLowerCase().trim();
+          
+          // Mapeo completo de categorías a categorías principales
+          const mapeoJoyas = [
+            'joya', 'joyas', 'oro', 'plata', 'diamante', 'anillo', 'anillos', 'collar', 
+            'pulsera', 'arete', 'aretes', 'cadena', 'reloj', 'gemas', 'perla', 'perlas',
+            'zafiro', 'rubí', 'esmeralda', 'brillante', 'argolla', 'argollas', 'sortija',
+            'sortijas', 'alianza', 'alianzas', 'pendiente', 'pendientes', 'broche', 'dije',
+            'quilate', 'kilate', '18k', '14k', '24k', '10k', '22k', 'jewelry', 'jewel'
+          ];
+          
+          const mapeoVehiculos = [
+            'vehiculo', 'vehículo', 'vehiculos', 'vehículos', 'carro', 'carros', 'auto', 
+            'autos', 'automovil', 'automóvil', 'moto', 'motocicleta', 'bicicleta', 'bicicletas',
+            'camioneta', 'camion', 'camión', 'bus', 'buseta', 'taxi', 'scooter', 'patineta',
+            'carroceria', 'motor', 'transmision', 'llantas', 'neumaticos', 'bateria',
+            'accesorios auto', 'repuestos', 'car', 'vehicle', 'motorcycle', 'bike', 'truck',
+            'suv', 'sedan', 'hatchback', 'pickup', 'van', 'automotive'
+          ];
+          
+          const mapeoMercancia = [
+            'mercancia', 'mercancía', 'electronica', 'electrónica', 'electronic', 'electronics',
+            'telefono', 'celular',
+            'iphone', 'samsung', 'tablet', 'laptop', 'computador', 'televisor', 'tv',
+            'refrigerador', 'nevera', 'lavadora', 'microondas', 'equipo', 'herramienta',
+            'electrodomestico', 'electrodoméstico', 'mueble', 'silla', 'mesa', 'cama',
+            'colchon', 'ropa', 'zapatos', 'bolso', 'mochila', 'consola', 'playstation',
+            'xbox', 'nintendo', 'cámara', 'camara', 'audifonos', 'auriculares', 'speaker',
+            'parlante', 'radio', 'stereo', 'phone', 'mobile', 'computer', 'furniture',
+            'appliance', 'tool', 'electrónica', 'electrónica'
+          ];
+          
+          // Verificar si coincide con alguna palabra clave
+          for (const keyword of mapeoJoyas) {
+            if (catLower.includes(keyword)) return 'Joyas';
+          }
+          
+          for (const keyword of mapeoVehiculos) {
+            if (catLower.includes(keyword)) return 'Vehículos';
+          }
+          
+          for (const keyword of mapeoMercancia) {
+            if (catLower.includes(keyword)) return 'Mercancía';
+          }
+          
+          // Si no coincide con nada, usar "Mercancía" como default
+          return 'Mercancía';
+        }
+        
+        if (Array.isArray(requests) && requests.length > 0) {
+          // Inicializar con las 3 categorías principales
+          const categorias = { 'Joyas': 0, 'Mercancía': 0, 'Vehículos': 0 };
+          
+          requests.forEach(r => {
+            // Intentar obtener categoría de diferentes fuentes
+            let cat = r.categoria;
+            
+            // Si no hay categoría directa, intentar desde producto_json
+            if (!cat && r.producto && r.producto.categoria) {
+              cat = r.producto.categoria;
+            }
+            
+            // Si aún no hay, intentar inferir desde nombre_producto o descripcion
+            if (!cat) {
+              const texto = `${r.nombre_producto || ''} ${r.descripcion || ''}`.toLowerCase();
+              if (texto.includes('oro') || texto.includes('plata') || texto.includes('joya') || 
+                  texto.includes('anillo') || texto.includes('collar') || texto.includes('18k') || 
+                  texto.includes('14k') || texto.includes('argolla') || texto.includes('quilate') ||
+                  texto.includes('kilate')) {
+                cat = 'Joyas';
+              } else if (texto.includes('carro') || texto.includes('auto') || texto.includes('moto') || 
+                         texto.includes('vehiculo') || texto.includes('bicicleta') || texto.includes('vehículo')) {
+                cat = 'Vehículos';
+              } else {
+                cat = 'Mercancía'; // Default (incluye electrónica, herramientas, etc.)
+              }
+            }
+            
+            // Normalizar a categoría principal
+            const categoriaNormalizada = normalizarCategoria(cat);
+            if (categorias.hasOwnProperty(categoriaNormalizada)) {
+              categorias[categoriaNormalizada] = (categorias[categoriaNormalizada] || 0) + 1;
+            } else {
+              // Si no coincide con ninguna principal, agregar a Mercancía
+              categorias['Mercancía'] = (categorias['Mercancía'] || 0) + 1;
+            }
+          });
+          
+          // Siempre mostrar las 3 categorías principales en orden fijo (comparativo)
+          const categoriasOrdenadas = [
+            ['Joyas', categorias['Joyas'] || 0],
+            ['Mercancía', categorias['Mercancía'] || 0],
+            ['Vehículos', categorias['Vehículos'] || 0]
+          ];
+          
+          const ctx1 = document.getElementById('chartCategories');
+          if (ctx1) {
+            if (charts.categories) charts.categories.destroy();
+            
+            // Mapeo de colores por categoría (orden fijo para consistencia)
+            const coloresPorCategoria = {
+              'Joyas': { bg: 'rgba(251, 191, 36, 0.8)', border: 'rgba(251, 191, 36, 1)' },      // Amarillo/Dorado
+              'Mercancía': { bg: 'rgba(59, 130, 246, 0.8)', border: 'rgba(59, 130, 246, 1)' },  // Azul
+              'Vehículos': { bg: 'rgba(34, 197, 94, 0.8)', border: 'rgba(34, 197, 94, 1)' }    // Verde
+            };
+            
+            charts.categories = new Chart(ctx1, {
+              type: 'bar',
+              data: {
+                labels: categoriasOrdenadas.map(([cat]) => cat),
+                datasets: [{
+                  label: 'Solicitudes',
+                  data: categoriasOrdenadas.map(([, count]) => count),
+                  backgroundColor: categoriasOrdenadas.map(([cat]) => coloresPorCategoria[cat]?.bg || 'rgba(168, 85, 247, 0.8)'),
+                  borderColor: categoriasOrdenadas.map(([cat]) => coloresPorCategoria[cat]?.border || 'rgba(168, 85, 247, 1)'),
+                  borderWidth: 2
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    callbacks: {
+                      label: function(context) {
+                        const count = context.parsed.y;
+                        return `${count} solicitud${count !== 1 ? 'es' : ''}`;
+                      }
+                    }
+                  },
+                  title: {
+                    display: true,
+                    text: 'Categorías Más Empeñadas',
+                    font: { size: 16, weight: 'bold' },
+                    color: 'var(--color-text)'
+                  }
+                },
+                scales: {
+                  y: { 
+                    beginAtZero: true,
+                    ticks: {
+                      stepSize: 1,
+                      precision: 0
+                    },
+                    title: {
+                      display: true,
+                      text: 'Cantidad de Solicitudes',
+                      color: 'var(--color-text-secondary)'
+                    }
+                  },
+                  x: {
+                    title: {
+                      display: true,
+                      text: 'Categorías',
+                      color: 'var(--color-text-secondary)'
+                    }
+                  }
+                }
+              }
+            });
+          }
+        } else {
+          // Si no hay solicitudes, mostrar gráfico vacío con las 3 categorías
+          const ctx1 = document.getElementById('chartCategories');
+          if (ctx1) {
+            if (charts.categories) charts.categories.destroy();
+            
+            const coloresPorCategoria = {
+              'Joyas': { bg: 'rgba(251, 191, 36, 0.8)', border: 'rgba(251, 191, 36, 1)' },
+              'Mercancía': { bg: 'rgba(59, 130, 246, 0.8)', border: 'rgba(59, 130, 246, 1)' },
+              'Vehículos': { bg: 'rgba(34, 197, 94, 0.8)', border: 'rgba(34, 197, 94, 1)' }
+            };
+            
+            charts.categories = new Chart(ctx1, {
+              type: 'bar',
+              data: {
+                labels: ['Joyas', 'Mercancía', 'Vehículos'],
+                datasets: [{
+                  label: 'Solicitudes',
+                  data: [0, 0, 0],
+                  backgroundColor: [
+                    coloresPorCategoria['Joyas'].bg,
+                    coloresPorCategoria['Mercancía'].bg,
+                    coloresPorCategoria['Vehículos'].bg
+                  ],
+                  borderColor: [
+                    coloresPorCategoria['Joyas'].border,
+                    coloresPorCategoria['Mercancía'].border,
+                    coloresPorCategoria['Vehículos'].border
+                  ],
+                  borderWidth: 2
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false },
+                  title: {
+                    display: true,
+                    text: 'Categorías Más Empeñadas',
+                    font: { size: 16, weight: 'bold' }
+                  }
+                },
+                scales: {
+                  y: { 
+                    beginAtZero: true,
+                    ticks: { stepSize: 1, precision: 0 }
+                  }
+                }
+              }
+            });
+          }
+        }
+        
+        // Gráfica 2: Montos aprobados por mes (Línea)
+        // Usar solicitudes aprobadas con monto_aprobado
+        const solicitudesAprobadas = Array.isArray(requests) 
+          ? requests.filter(r => {
+              const estado = (r.estado || '').toLowerCase();
+              const montoAprobado = Number(r.monto_aprobado || 0);
+              return estado === 'aprobado' && montoAprobado > 0;
+            })
+          : [];
+        
+        if (solicitudesAprobadas.length > 0) {
+          const montosPorMes = {};
+          
+          solicitudesAprobadas.forEach(s => {
+            // Usar fecha_respuesta o fecha_creacion como fecha de aprobación
+            const fecha = s.fecha_respuesta || s.fechaRespuesta || s.created_at || s.fecha_creacion;
+            const monto = Number(s.monto_aprobado || 0);
+            
+            if (fecha && monto > 0) {
+              try {
+                const fechaObj = new Date(fecha);
+                if (!isNaN(fechaObj.getTime())) {
+                  // Formato: "2024-01" para agrupar por año-mes
+                  const año = fechaObj.getFullYear();
+                  const mes = String(fechaObj.getMonth() + 1).padStart(2, '0');
+                  const claveMes = `${año}-${mes}`;
+                  
+                  // Etiqueta para mostrar: "Ene 2024"
+                  const etiquetaMes = fechaObj.toLocaleDateString('es-ES', { year: 'numeric', month: 'short' });
+                  
+                  if (!montosPorMes[claveMes]) {
+                    montosPorMes[claveMes] = { monto: 0, etiqueta: etiquetaMes };
+                  }
+                  montosPorMes[claveMes].monto += monto;
+                }
+              } catch (e) {
+                console.warn('Error parseando fecha:', fecha, e);
+              }
+            }
+          });
+          
+          // Ordenar por clave (año-mes) y extraer datos
+          const mesesOrdenados = Object.keys(montosPorMes).sort();
+          const etiquetas = mesesOrdenados.map(clave => montosPorMes[clave].etiqueta);
+          const montos = mesesOrdenados.map(clave => montosPorMes[clave].monto);
+          
+          const ctx2 = document.getElementById('chartMonthly');
+          if (ctx2 && mesesOrdenados.length > 0) {
+            if (charts.monthly) charts.monthly.destroy();
+            charts.monthly = new Chart(ctx2, {
+              type: 'line',
+              data: {
+                labels: etiquetas,
+                datasets: [{
+                  label: 'Monto Aprobado',
+                  data: montos,
+                  borderColor: 'rgba(22, 163, 74, 1)',
+                  backgroundColor: 'rgba(22, 163, 74, 0.1)',
+                  tension: 0.4,
+                  fill: true,
+                  pointRadius: 4,
+                  pointHoverRadius: 6,
+                  pointBackgroundColor: 'rgba(22, 163, 74, 1)',
+                  pointBorderColor: '#FFFFFF',
+                  pointBorderWidth: 2
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { 
+                    display: true,
+                    position: 'top'
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: function(context) {
+                        const monto = context.parsed.y;
+                        return `Monto: ${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(monto)}`;
+                      }
+                    }
+                  },
+                  title: {
+                    display: true,
+                    text: 'Montos Aprobados por Mes',
+                    font: { size: 16, weight: 'bold' },
+                    color: 'var(--color-text)'
+                  }
+                },
+                scales: {
+                  y: { 
+                    beginAtZero: true,
+                    ticks: {
+                      callback: function(value) {
+                        return new Intl.NumberFormat('es-CO', { 
+                          style: 'currency', 
+                          currency: 'COP',
+                          notation: 'compact',
+                          maximumFractionDigits: 0
+                        }).format(value);
+                      }
+                    },
+                    title: {
+                      display: true,
+                      text: 'Monto (COP)',
+                      color: 'var(--color-text-secondary)'
+                    }
+                  },
+                  x: {
+                    title: {
+                      display: true,
+                      text: 'Mes',
+                      color: 'var(--color-text-secondary)'
+                    }
+                  }
+                }
+              }
+            });
+          } else if (ctx2) {
+            // Mostrar mensaje si no hay datos
+            ctx2.parentElement.innerHTML = `
+              <div style="text-align: center; padding: var(--spacing-8); color: var(--color-text-muted);">
+                <p style="font-size: var(--font-size-lg); margin-bottom: var(--spacing-2);">No hay montos aprobados registrados</p>
+                <p style="font-size: var(--font-size-sm);">Los montos aparecerán aquí cuando se aprueben solicitudes con monto asignado.</p>
+              </div>
+            `;
+          }
+        } else {
+          // Mostrar mensaje si no hay solicitudes aprobadas
+          const ctx2 = document.getElementById('chartMonthly');
+          if (ctx2) {
+            ctx2.parentElement.innerHTML = `
+              <div style="text-align: center; padding: var(--spacing-8); color: var(--color-text-muted);">
+                <p style="font-size: var(--font-size-lg); margin-bottom: var(--spacing-2);">No hay montos aprobados registrados</p>
+                <p style="font-size: var(--font-size-sm);">Los montos aparecerán aquí cuando se aprueben solicitudes con monto asignado.</p>
+              </div>
+            `;
+          }
+        }
+        
+        // Gráfica 3: Estado de órdenes (Dona)
+        if (Array.isArray(orders) && orders.length > 0) {
+          const estados = {};
+          orders.forEach(o => {
+            const estado = o.estado || 'pendiente';
+            estados[estado] = (estados[estado] || 0) + 1;
+          });
+          
+          const ctx3 = document.getElementById('chartOrders');
+          if (ctx3 && Object.keys(estados).length > 0) {
+            if (charts.orders) charts.orders.destroy();
+            charts.orders = new Chart(ctx3, {
+              type: 'doughnut',
+              data: {
+                labels: Object.keys(estados),
+                datasets: [{
+                  data: Object.values(estados),
+                  backgroundColor: [
+                    'rgba(251, 191, 36, 0.8)',
+                    'rgba(59, 130, 246, 0.8)',
+                    'rgba(34, 197, 94, 0.8)',
+                    'rgba(239, 68, 68, 0.8)',
+                    'rgba(168, 85, 247, 0.8)'
+                  ]
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { position: 'bottom' }
+                }
+              }
+            });
+          }
+        }
+        
+        // Gráfica 4: Productos por categoría (Pie)
+        if (Array.isArray(products) && products.length > 0) {
+          const productosPorCategoria = {};
+          products.forEach(p => {
+            const cat = p.categoria || 'Sin categoría';
+            productosPorCategoria[cat] = (productosPorCategoria[cat] || 0) + 1;
+          });
+          
+          const ctx4 = document.getElementById('chartProducts');
+          if (ctx4 && Object.keys(productosPorCategoria).length > 0) {
+            if (charts.products) charts.products.destroy();
+            charts.products = new Chart(ctx4, {
+              type: 'pie',
+              data: {
+                labels: Object.keys(productosPorCategoria),
+                datasets: [{
+                  data: Object.values(productosPorCategoria),
+                  backgroundColor: [
+                    'rgba(34, 197, 94, 0.8)',
+                    'rgba(59, 130, 246, 0.8)',
+                    'rgba(251, 191, 36, 0.8)',
+                    'rgba(239, 68, 68, 0.8)',
+                    'rgba(168, 85, 247, 0.8)',
+                    'rgba(236, 72, 153, 0.8)'
+                  ]
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { position: 'bottom' }
+                }
+              }
+            });
+          }
+        }
+        
+        // Total aprobado
+        if (Array.isArray(contracts) && contracts.length > 0) {
+          const totalAprobado = contracts.reduce((sum, c) => sum + Number(c.monto || c.con_valor || 0), 0);
+          const container = document.getElementById('totalApproved');
+          if (container) {
+            container.querySelector('.value').textContent = `$${totalAprobado.toLocaleString()}`;
+          }
+        }
+      } catch(err) {
+        console.error('Error cargando analytics:', err);
+      }
+    }
+    
+    async function loadSparkAnalytics() {
+      try {
+        // Intentar obtener datos de Spark Analytics Service
+        const sparkData = await apiFetch('analytics', '/spark/reports').catch(()=>null);
+        
+        if (sparkData && sparkData.data) {
+          const container = document.getElementById('sparkAnalytics');
+          if (container) {
+            container.innerHTML = `
+              <div class="card" style="padding:var(--spacing-md);">
+                <h3 style="margin-top:0;display:flex;align-items:center;">
+                  Análisis de Datos Distribuidos
+                  <span class="spark-badge">SPARK</span>
+                </h3>
+                <p style="color:var(--color-text-muted);margin-bottom:var(--spacing-md);">
+                  Reportes generados por Apache Spark desde dataset de Kaggle
+                </p>
+                <div id="sparkCharts"></div>
+              </div>
+            `;
+            
+            // Renderizar gráficas de Spark si están disponibles
+            if (sparkData.data.trends) {
+              renderSparkChart('sparkTrends', sparkData.data.trends, 'line', 'Tendencias de Mercado');
+            }
+            if (sparkData.data.patterns) {
+              renderSparkChart('sparkPatterns', sparkData.data.patterns, 'bar', 'Patrones de Comportamiento');
+            }
+          }
+        } else {
+          const container = document.getElementById('sparkAnalytics');
+          if (container) {
+            container.innerHTML = `
+              <div class="card" style="padding:var(--spacing-md);">
+                <h3 style="margin-top:0;display:flex;align-items:center;">
+                  Análisis de Datos Distribuidos
+                  <span class="spark-badge">SPARK</span>
+                </h3>
+                <p style="color:var(--color-text-muted);">
+                  El servicio de análisis distribuido está configurándose. Los reportes aparecerán aquí una vez procesados.
+                </p>
+              </div>
+            `;
+          }
+        }
+      } catch(err) {
+        console.error('Error cargando analytics de Spark:', err);
+      }
+    }
+    
+    function renderSparkChart(id, data, type, title) {
+      const canvas = document.createElement('canvas');
+      canvas.id = id;
+      const wrapper = document.createElement('div');
+      wrapper.className = 'chart-wrapper';
+      wrapper.appendChild(canvas);
+      document.getElementById('sparkCharts').appendChild(wrapper);
+      
+      new Chart(canvas, {
+        type: type,
+        data: data,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            title: { display: true, text: title }
+          }
+        }
+      });
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
   </script>
 </head>
 <body>
   <header></header>
   <main class="container">
-    <h1>Panel de administración</h1>
-    <section class="stats">
-      <div id="users" class="card stat"><h3>Usuarios</h3><p><strong>—</strong></p></div>
-      <div id="products" class="card stat"><h3>Productos</h3><p><strong>—</strong></p></div>
-      <div id="orders" class="card stat"><h3>Órdenes</h3><p><strong>—</strong></p></div>
-      <div id="requests" class="card stat"><h3>Solicitudes</h3><p><strong>—</strong></p></div>
-      <div id="contracts" class="card stat"><h3>Contratos</h3><p><strong>—</strong></p></div>
+    <div class="page-header">
+      <h1 class="page-title">Panel de Administración</h1>
+      <p class="text-muted">Vista general del sistema y métricas clave</p>
+    </div>
+    
+    <section class="stats-grid">
+      <div id="users" class="card stat-card">
+        <h3>Usuarios</h3>
+        <p class="value">—</p>
+        <p class="subtitle">Total registrados</p>
+      </div>
+      <div id="products" class="card stat-card">
+        <h3>Productos</h3>
+        <p class="value">—</p>
+        <p class="subtitle">En inventario</p>
+      </div>
+      <div id="orders" class="card stat-card">
+        <h3>Órdenes</h3>
+        <p class="value">—</p>
+        <p class="subtitle">Total</p>
+      </div>
+      <div id="requests" class="card stat-card">
+        <h3>Solicitudes</h3>
+        <p class="value">—</p>
+        <p class="subtitle">Total</p>
+      </div>
+      <div id="contracts" class="card stat-card">
+        <h3>Contratos</h3>
+        <p class="value">—</p>
+        <p class="subtitle">Activos</p>
+      </div>
     </section>
+    
+    <div class="grid" style="grid-template-columns: 1fr 1fr; gap: var(--spacing-xl); margin-bottom: var(--spacing-xl);">
+      <section class="card chart-container">
+        <h3 class="chart-title">Categorías Más Empeñadas</h3>
+        <div class="chart-wrapper">
+          <canvas id="chartCategories"></canvas>
+        </div>
+      </section>
+      
+      <section class="card chart-container">
+        <h3 class="chart-title">Estado de Órdenes</h3>
+        <div class="chart-wrapper">
+          <canvas id="chartOrders"></canvas>
+        </div>
+      </section>
+    </div>
+    
+    <div class="grid" style="grid-template-columns: 1fr 1fr; gap: var(--spacing-xl); margin-bottom: var(--spacing-xl);">
+      <section class="card chart-container">
+        <h3 class="chart-title">Montos Aprobados por Mes</h3>
+        <div class="chart-wrapper">
+          <canvas id="chartMonthly"></canvas>
+        </div>
+      </section>
+      
+      <section class="card chart-container">
+        <h3 class="chart-title">Productos por Categoría</h3>
+        <div class="chart-wrapper">
+          <canvas id="chartProducts"></canvas>
+        </div>
+      </section>
+    </div>
+    
+    <section id="sparkAnalytics" class="card" style="margin-bottom: var(--spacing-xl);"></section>
+    
+    <div class="grid" style="grid-template-columns: 2fr 1fr; gap: var(--spacing-xl);">
+      <div>
+        <section class="card chart-container">
+          <h3 class="chart-title">Liquidez por Sucursal</h3>
+          <div id="liquidityContainer" class="liquidity-grid"></div>
+          <div class="quick-actions">
+            <a href="admin_liquidity.html" class="button">Gestionar Liquidez</a>
+            <a href="admin_transfers.html" class="button button--outline">Transferencias</a>
+          </div>
+        </section>
+      </div>
+      
+      <div>
+        <section class="card chart-container">
+          <h3 class="chart-title">Total Aprobado</h3>
+          <div id="totalApproved">
+            <p class="value" style="font-size:var(--font-size-2xl);">$0</p>
+            <p class="subtitle">En préstamos activos</p>
+          </div>
+        </section>
+        
+        <section class="card" style="margin-top:var(--spacing-lg);">
+          <h3 style="margin-top:0">Accesos Rápidos</h3>
+          <div style="display:flex;flex-direction:column;gap:var(--spacing-sm);">
+            <a href="admin_users.html" class="button button--outline">Gestionar Usuarios</a>
+            <a href="admin_products.html" class="button button--outline">Gestionar Productos</a>
+            <a href="admin_orders.html" class="button button--outline">Ver Órdenes</a>
+            <a href="admin_requests.html" class="button button--outline">Revisar Solicitudes</a>
+            <a href="admin_contracts.html" class="button button--outline">Gestionar Contratos</a>
+          </div>
+        </section>
+      </div>
+    </div>
   </main>
 </body>
 </html>
-

@@ -23,15 +23,29 @@ router.post('/', /* authenticateJWT, */ async (req, res) => {
       return res.status(400).json({ ok: false, msg: 'Debe enviar al menos nombre o descripcion' });
     }
 
+    // Mapear categoría a clase (1=Joyas, 2=Mercancía, 3=Vehículos)
+    const categoriaMap = {
+      'Joyas': 1,
+      'Mercancía': 2,
+      'Mercancia': 2,
+      'Vehículos': 3,
+      'Vehiculos': 3
+    };
+    const categoria = body.categoria || body.cat || 'Sin categoria';
+    const clase = categoriaMap[categoria] || 1; // Default a Joyas si no se encuentra
+    
     const payload = {
       nombre: body.nombre || body.title || 'Producto desde contrato',
       descripcion: body.descripcion || body.desc || '',
-      categoria: body.categoria || body.cat || 'Sin categoria',
+      categoria: categoria,
+      clase: clase, // Agregar clase mapeada
       precio: isPositiveNumber(body.precio) ? Number(body.precio) : 0,
       cantidad: Number.isInteger(Number(body.cantidad || body.stock)) ? Number(body.cantidad || body.stock) : 1,
       estado: body.estado || 'garantia',
       imagenes: Array.isArray(body.imagenes) ? body.imagenes : (body.imagenes ? [body.imagenes] : []),
       sucursal: body.sucursal || null,
+      tipo: body.tipo || 1, // Agregar tipo por defecto
+      lugar: body.lugar || body.sucursal || 1, // Agregar lugar por defecto
       metadata: body.metadata || null
     };
 
@@ -55,6 +69,8 @@ router.get('/', async (req, res) => {
       estado: req.query.estado,
       sucursal: req.query.sucursal,
       sin_precio: req.query.sin_precio,
+      precio_min: req.query.precio_min,
+      precio_max: req.query.precio_max,
       q: req.query.q
     };
     const rows = await productosModel.getProducts(filters);
@@ -62,6 +78,28 @@ router.get('/', async (req, res) => {
   } catch (err) {
     console.error('Error GET /productos', err);
     res.status(500).json({ ok: false, msg: 'Error obteniendo productos', error: err.message });
+  }
+});
+
+// GET /productos/categorias -> obtener categorías disponibles
+router.get('/categorias', async (req, res) => {
+  try {
+    const categorias = await productosModel.getCategorias();
+    res.json({ ok: true, data: categorias });
+  } catch (err) {
+    console.error('Error GET /productos/categorias', err);
+    res.status(500).json({ ok: false, msg: 'Error obteniendo categorías', error: err.message });
+  }
+});
+
+// GET /productos/sucursales -> obtener sucursales disponibles
+router.get('/sucursales', async (req, res) => {
+  try {
+    const sucursales = await productosModel.getSucursales();
+    res.json({ ok: true, data: sucursales });
+  } catch (err) {
+    console.error('Error GET /productos/sucursales', err);
+    res.status(500).json({ ok: false, msg: 'Error obteniendo sucursales', error: err.message });
   }
 });
 

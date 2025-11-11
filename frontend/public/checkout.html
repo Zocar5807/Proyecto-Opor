@@ -4,53 +4,438 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Checkout - La Oportunidad</title>
-  <link rel="stylesheet" href="../assets/css/base.css">
-  <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
-  <link rel="stylesheet" href="../assets/css/theme.css">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
+  <link rel="icon" href="/assets/img/logo.svg">
+  <style>
+    .checkout-steps {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: var(--spacing-xl);
+      position: relative;
+    }
+    .checkout-steps::before {
+      content: '';
+      position: absolute;
+      top: 20px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--color-border);
+      z-index: 0;
+    }
+    .checkout-step {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+    .checkout-step__number {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--color-bg-secondary);
+      border: 2px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-text-muted);
+      margin-bottom: var(--spacing-sm);
+      transition: all var(--transition-base);
+    }
+    .checkout-step.active .checkout-step__number {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: #FFFFFF;
+    }
+    .checkout-step.completed .checkout-step__number {
+      background: var(--color-success);
+      border-color: var(--color-success);
+      color: #FFFFFF;
+    }
+    .checkout-step__label {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-muted);
+      text-align: center;
+    }
+    .checkout-step.active .checkout-step__label {
+      color: var(--color-primary);
+      font-weight: var(--font-weight-medium);
+    }
+    .checkout-panel {
+      display: none;
+    }
+    .checkout-panel.active {
+      display: block;
+    }
+    .payment-methods {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--spacing-md);
+      margin-top: var(--spacing-md);
+    }
+    .payment-method {
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-md);
+      cursor: pointer;
+      transition: all var(--transition-base);
+      background: var(--color-bg-secondary);
+    }
+    .payment-method:hover {
+      border-color: var(--color-primary);
+      background: var(--color-primary-50);
+    }
+    .payment-method.selected {
+      border-color: var(--color-primary);
+      background: var(--color-primary-100);
+    }
+    .payment-method input[type="radio"] {
+      margin-right: var(--spacing-sm);
+    }
+    .checkout-summary {
+      background: var(--color-bg-tertiary);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-lg);
+      margin-top: var(--spacing-lg);
+    }
+    .checkout-summary-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: var(--spacing-sm);
+    }
+    .checkout-summary-total {
+      display: flex;
+      justify-content: space-between;
+      padding-top: var(--spacing-md);
+      margin-top: var(--spacing-md);
+      border-top: 2px solid var(--color-border);
+      font-size: var(--font-size-xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-primary);
+    }
+  </style>
   <script type="module">
-    import { requireAuth } from '../assets/js/auth.js';
-    import { renderHeader, showToast } from '../assets/js/ui.js';
-    import { getCart, clearCart, computeTotals } from '../assets/js/cart.js';
-    import { apiFetch } from '../assets/js/api.js';
+    import { requireAuth } from '/assets/js/auth.js';
+    import { renderHeader, showToast } from '/assets/js/ui.js';
+    import { getCart, clearCart, computeTotals } from '/assets/js/cart.js';
+    import { apiFetch } from '/assets/js/api.js';
     requireAuth();
+    
+    let currentStep = 1;
+    let selectedPaymentMethod = '';
+    let cartItems = [];
+    
     window.addEventListener('DOMContentLoaded', ()=>{
       renderHeader({ active:'products' });
-      const items = getCart();
-      const { total } = computeTotals(items);
-      document.getElementById('summary').textContent = `$${Number(total).toLocaleString()}`;
-      const form = document.querySelector('form');
-      form.addEventListener('submit', async (e)=>{
+      cartItems = getCart();
+      
+      if (cartItems.length === 0) {
+        showToast('Tu carrito está vacío');
+        setTimeout(() => location.href = 'products.html', 1500);
+        return;
+      }
+      
+      const { total, subtotal } = computeTotals(cartItems);
+      document.getElementById('summaryTotal').textContent = `$${Number(total).toLocaleString()}`;
+      document.getElementById('summarySubtotal').textContent = `$${Number(subtotal).toLocaleString()}`;
+      
+      renderCartItems();
+      setupSteps();
+      setupPaymentMethods();
+      setupForms();
+    });
+    
+    function renderCartItems() {
+      const container = document.getElementById('cartItems');
+      if (!container) return;
+      
+      container.innerHTML = cartItems.map(item => `
+        <div class="checkout-summary-item">
+          <span>${escapeHtml(item.nombre || item.name || 'Producto')} × ${item.quantity}</span>
+          <span>$${Number((item.precio || item.price || 0) * item.quantity).toLocaleString()}</span>
+        </div>
+      `).join('');
+    }
+    
+    function setupSteps() {
+      updateStep(1);
+    }
+    
+    function updateStep(step) {
+      currentStep = step;
+      document.querySelectorAll('.checkout-step').forEach((el, idx) => {
+        const stepNum = idx + 1;
+        el.classList.remove('active', 'completed');
+        if (stepNum < step) {
+          el.classList.add('completed');
+        } else if (stepNum === step) {
+          el.classList.add('active');
+        }
+      });
+      
+      document.querySelectorAll('.checkout-panel').forEach((el, idx) => {
+        el.classList.toggle('active', idx + 1 === step);
+      });
+    }
+    
+    function setupPaymentMethods() {
+      document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          selectedPaymentMethod = e.target.value;
+          document.querySelectorAll('.payment-method').forEach(m => m.classList.remove('selected'));
+          e.target.closest('.payment-method').classList.add('selected');
+        });
+      });
+    }
+    
+    function setupForms() {
+      const addressForm = document.getElementById('addressForm');
+      const paymentForm = document.getElementById('paymentForm');
+      const confirmForm = document.getElementById('confirmForm');
+      
+      addressForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const address = document.getElementById('address').value.trim();
-        const payload = { address, items: items.map(i=>({ id: i.id, cantidad: i.quantity })) };
-        try{
-          const order = await apiFetch('ordenes','',{ method:'POST', body: payload });
+        if (!address) {
+          showToast('Ingresa una dirección de entrega');
+          return;
+        }
+        updateStep(2);
+      });
+      
+      paymentForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!selectedPaymentMethod) {
+          showToast('Selecciona un método de pago');
+          return;
+        }
+        
+        // Validar campos según método de pago
+        if (selectedPaymentMethod === 'tarjeta') {
+          const cardNumber = document.getElementById('cardNumber').value.trim();
+          const cardName = document.getElementById('cardName').value.trim();
+          const cardExpiry = document.getElementById('cardExpiry').value.trim();
+          const cardCvv = document.getElementById('cardCvv').value.trim();
+          
+          if (!cardNumber || !cardName || !cardExpiry || !cardCvv) {
+            showToast('Completa todos los datos de la tarjeta');
+            return;
+          }
+        } else if (selectedPaymentMethod === 'transferencia') {
+          const bankAccount = document.getElementById('bankAccount').value.trim();
+          if (!bankAccount) {
+            showToast('Ingresa el número de cuenta');
+            return;
+          }
+        }
+        
+        // Actualizar panel de confirmación
+        document.getElementById('confirmAddress').textContent = document.getElementById('address').value;
+        const paymentLabels = {
+          tarjeta: 'Tarjeta de crédito/débito',
+          transferencia: 'Transferencia bancaria',
+          efectivo: 'Pago en efectivo'
+        };
+        document.getElementById('confirmPayment').textContent = paymentLabels[selectedPaymentMethod] || selectedPaymentMethod;
+        
+        updateStep(3);
+      });
+      
+      // Mostrar/ocultar campos según método de pago
+      document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          const method = e.target.value;
+          document.getElementById('cardDetails').style.display = method === 'tarjeta' ? 'block' : 'none';
+          document.getElementById('transferDetails').style.display = method === 'transferencia' ? 'block' : 'none';
+        });
+      });
+      
+      confirmForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const address = document.getElementById('address').value.trim();
+        const payload = {
+          address,
+          items: cartItems.map(i => ({ id: i.id, cantidad: i.quantity })),
+          paymentMethod: selectedPaymentMethod,
+          paymentData: getPaymentData()
+        };
+        
+        try {
+          const order = await apiFetch('ordenes', '', { method:'POST', body: payload });
           clearCart();
-          showToast('Orden creada');
+          showToast('Orden creada exitosamente');
           const orderId = order?.idOrden || order?.id_orden || order?.id || order?.insertId || order?.data?.idOrden || order?.data?.id_orden;
-          location.href = `order_detail.html?id=${orderId ?? ''}`;
-        }catch(err){
+          setTimeout(() => {
+            location.href = `order_detail.html?id=${orderId ?? ''}`;
+          }, 1500);
+        } catch(err) {
+          console.error('Error creando orden:', err);
           showToast('No se pudo crear la orden');
         }
-      })
-    });
+      });
+    }
+    
+    function getPaymentData() {
+      if (selectedPaymentMethod === 'tarjeta') {
+        return {
+          cardNumber: document.getElementById('cardNumber').value.trim(),
+          cardName: document.getElementById('cardName').value.trim(),
+          cardExpiry: document.getElementById('cardExpiry').value.trim(),
+          cardCvv: document.getElementById('cardCvv').value.trim()
+        };
+      } else if (selectedPaymentMethod === 'transferencia') {
+        return {
+          bankAccount: document.getElementById('bankAccount').value.trim()
+        };
+      }
+      return {};
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
   </script>
 </head>
 <body>
   <header></header>
   <main class="container">
-    <h1>Checkout</h1>
-    <section class="card">
-      <form>
-        <div>
-          <label for="address">Dirección de entrega</label>
-          <input class="input" id="address" required>
+    <div class="page-header">
+      <h1 class="page-title">Checkout</h1>
+    </div>
+    
+    <div class="checkout-steps">
+      <div class="checkout-step active">
+        <div class="checkout-step__number">1</div>
+        <div class="checkout-step__label">Dirección</div>
+      </div>
+      <div class="checkout-step">
+        <div class="checkout-step__number">2</div>
+        <div class="checkout-step__label">Pago</div>
+      </div>
+      <div class="checkout-step">
+        <div class="checkout-step__number">3</div>
+        <div class="checkout-step__label">Confirmación</div>
+      </div>
+    </div>
+    
+    <div class="grid" style="grid-template-columns: 2fr 1fr; gap: var(--spacing-xl);">
+      <div>
+        <!-- Paso 1: Dirección -->
+        <section class="card checkout-panel active" id="addressPanel">
+          <h2 style="margin-top:0">Dirección de entrega</h2>
+          <form id="addressForm">
+            <div>
+              <label for="address">Dirección completa *</label>
+              <input class="input" id="address" placeholder="Calle, número, barrio, ciudad" required>
+            </div>
+            <button class="button" type="submit" style="margin-top: var(--spacing-md);">Continuar</button>
+          </form>
+        </section>
+        
+        <!-- Paso 2: Método de pago -->
+        <section class="card checkout-panel" id="paymentPanel">
+          <h2 style="margin-top:0">Método de pago</h2>
+          <form id="paymentForm">
+            <div class="payment-methods">
+              <label class="payment-method">
+                <input type="radio" name="paymentMethod" value="tarjeta" required>
+                <div>
+                  <strong>Tarjeta de crédito/débito</strong>
+                  <p style="font-size: var(--font-size-sm); color: var(--color-text-muted); margin: var(--spacing-xs) 0 0;">Visa, Mastercard, etc.</p>
+                </div>
+              </label>
+              <label class="payment-method">
+                <input type="radio" name="paymentMethod" value="transferencia" required>
+                <div>
+                  <strong>Transferencia bancaria</strong>
+                  <p style="font-size: var(--font-size-sm); color: var(--color-text-muted); margin: var(--spacing-xs) 0 0;">Pago directo a cuenta</p>
+                </div>
+              </label>
+              <label class="payment-method">
+                <input type="radio" name="paymentMethod" value="efectivo" required>
+                <div>
+                  <strong>Pago en efectivo</strong>
+                  <p style="font-size: var(--font-size-sm); color: var(--color-text-muted); margin: var(--spacing-xs) 0 0;">Al momento de la entrega</p>
+                </div>
+              </label>
+            </div>
+            
+            <div id="cardDetails" style="display:none; margin-top: var(--spacing-lg);">
+              <div class="grid" style="grid-template-columns: 1fr 1fr; gap: var(--spacing-md);">
+                <div>
+                  <label for="cardNumber">Número de tarjeta *</label>
+                  <input class="input" id="cardNumber" type="text" placeholder="1234 5678 9012 3456" maxlength="19">
+                </div>
+                <div>
+                  <label for="cardName">Nombre en la tarjeta *</label>
+                  <input class="input" id="cardName" type="text" placeholder="Juan Pérez">
+                </div>
+                <div>
+                  <label for="cardExpiry">Vencimiento *</label>
+                  <input class="input" id="cardExpiry" type="text" placeholder="MM/AA" maxlength="5">
+                </div>
+                <div>
+                  <label for="cardCvv">CVV *</label>
+                  <input class="input" id="cardCvv" type="text" placeholder="123" maxlength="4">
+                </div>
+              </div>
+            </div>
+            
+            <div id="transferDetails" style="display:none; margin-top: var(--spacing-lg);">
+              <div>
+                <label for="bankAccount">Número de cuenta bancaria *</label>
+                <input class="input" id="bankAccount" type="text" placeholder="1234567890">
+                <p style="font-size: var(--font-size-sm); color: var(--color-text-muted); margin-top: var(--spacing-xs);">
+                  Realiza la transferencia y adjunta el comprobante al confirmar la orden.
+                </p>
+              </div>
+            </div>
+            
+            <button class="button" type="submit" style="margin-top: var(--spacing-lg);">Continuar</button>
+          </form>
+        </section>
+        
+        <!-- Paso 3: Confirmación -->
+        <section class="card checkout-panel" id="confirmPanel">
+          <h2 style="margin-top:0">Confirmar orden</h2>
+          <form id="confirmForm">
+            <p>Revisa los detalles de tu orden antes de confirmar:</p>
+            <div style="margin: var(--spacing-lg) 0;">
+              <strong>Dirección de entrega:</strong>
+              <p id="confirmAddress" style="color: var(--color-text-secondary);"></p>
+            </div>
+            <div style="margin: var(--spacing-lg) 0;">
+              <strong>Método de pago:</strong>
+              <p id="confirmPayment" style="color: var(--color-text-secondary);"></p>
+            </div>
+            <button class="button" type="submit" style="width: 100%; margin-top: var(--spacing-lg);">Confirmar y pagar</button>
+          </form>
+        </section>
+      </div>
+      
+      <aside>
+        <div class="card checkout-summary">
+          <h3 style="margin-top:0">Resumen de compra</h3>
+          <div id="cartItems"></div>
+          <div class="checkout-summary-item">
+            <span>Subtotal</span>
+            <span id="summarySubtotal">$0</span>
+          </div>
+          <div class="checkout-summary-total">
+            <span>Total</span>
+            <span id="summaryTotal">$0</span>
+          </div>
         </div>
-        <p style="margin-top:12px">Total a pagar: <strong id="summary">$0</strong></p>
-        <button class="button" type="submit">Confirmar orden</button>
-      </form>
-    </section>
+      </aside>
+    </div>
   </main>
 </body>
 </html>

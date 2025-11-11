@@ -3,43 +3,137 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Producto - La Oportunidad</title>
-  <link rel="stylesheet" href="../assets/css/base.css">
-  <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
-  <link rel="stylesheet" href="../assets/css/theme.css">
+  <title>Detalle de Producto - La Oportunidad</title>
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
+  <link rel="icon" href="/assets/img/logo.svg">
+  <style>
+    .product-detail {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--spacing-xl);
+      margin-bottom: var(--spacing-xl);
+    }
+    .product-detail__image {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      border-radius: var(--radius-lg);
+      background: var(--color-bg-tertiary);
+    }
+    .product-detail__info {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-md);
+    }
+    .product-detail__price {
+      font-size: var(--font-size-3xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-primary);
+    }
+    .product-detail__meta {
+      display: flex;
+      gap: var(--spacing-sm);
+      flex-wrap: wrap;
+    }
+    @media (max-width: 768px) {
+      .product-detail {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
   <script type="module">
-    import { requireAuth } from '../assets/js/auth.js';
-    import { renderHeader, showToast } from '../assets/js/ui.js';
-    import { apiFetch } from '../assets/js/api.js';
-    import { addToCart } from '../assets/js/cart.js';
+    import { requireAuth } from '/assets/js/auth.js';
+    import { renderHeader, showToast } from '/assets/js/ui.js';
+    import { apiFetch } from '/assets/js/api.js';
+    import { addToCart } from '/assets/js/cart.js';
     requireAuth();
+    
     function id(){ const u=new URL(location.href); return u.searchParams.get('id'); }
+    
     window.addEventListener('DOMContentLoaded', async ()=>{
       renderHeader({ active:'products' });
-      const el = document.getElementById('detail');
-      try{
-        const p = await apiFetch('productos',`/${id()}`);
-        el.innerHTML = `
-          <div class=\"card\">
-            <h1 style=\"margin-top:0\">${p.nombre ?? p.name}</h1>
-            <p style=\"color:var(--color-text-muted)\">${p.descripcion ?? ''}</p>
-            <p style=\"font-size:20px;font-weight:700\">$${Number(p.precio ?? p.price).toLocaleString()}</p>
-            <button id=\"add\" class=\"button\">Agregar al carrito</button>
-          </div>`;
-        document.getElementById('add').addEventListener('click', ()=>{
-          addToCart({ id: p.id, nombre: p.nombre ?? p.name, precio: p.precio ?? p.price }, 1);
-          showToast('Agregado al carrito');
-          location.href = 'cart.html';
-        });
-      }catch{ el.textContent='No se pudo cargar el producto'; }
+      await loadProduct();
     });
+    
+    async function loadProduct() {
+      try {
+        const product = await apiFetch('productos', `/${id()}`);
+        renderProduct(product);
+      } catch(err) {
+        console.error('Error cargando producto:', err);
+        document.getElementById('productDetail').innerHTML = '<div class="empty-state"><h3>Error al cargar el producto</h3></div>';
+      }
+    }
+    
+    function renderProduct(p) {
+      const nombre = p.nombre || p.name || 'Sin nombre';
+      const descripcion = p.descripcion || p.description || '';
+      const precio = p.precio || p.price || 0;
+      const imagen = p.imagen || p.image || '';
+      const categoria = p.categoria || 'Sin categoría';
+      const estado = p.estado || 'a_venta';
+      const sucursal = p.sucursal || 'No especificada';
+      const cantidad = p.cantidad || p.stock || 0;
+      
+      document.getElementById('productDetail').innerHTML = `
+        <div class="product-detail">
+          <div>
+            ${imagen ? `
+              <img src="${escapeHtml(imagen)}" alt="${escapeHtml(nombre)}" class="product-detail__image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+            ` : ''}
+            <div class="product-detail__image" style="display: ${imagen ? 'none' : 'flex'}; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--color-primary-50), var(--color-primary-100));">
+              <svg width="120" height="120" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity: 0.3;">
+                <path d="M20 7L12 3L4 7M20 7L12 11M20 7V17L12 21M12 11L4 7M12 11V21M4 7V17L12 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>
+          <div class="product-detail__info">
+            <h1 style="margin-top:0">${escapeHtml(nombre)}</h1>
+            <div class="product-detail__price">$${Number(precio).toLocaleString()}</div>
+            <div class="product-detail__meta">
+              <span class="badge badge--info">${escapeHtml(categoria)}</span>
+              <span class="badge ${estado === 'garantia' ? 'badge--warning' : 'badge--success'}">
+                ${estado === 'garantia' ? 'En garantía' : 'A la venta'}
+              </span>
+              <span class="badge badge--secondary">Suc. ${escapeHtml(sucursal)}</span>
+              ${cantidad > 0 ? `<span class="badge badge--success">Stock: ${cantidad}</span>` : '<span class="badge badge--error">Sin stock</span>'}
+            </div>
+            ${descripcion ? `<p style="line-height:var(--line-height-relaxed);color:var(--color-text-secondary);">${escapeHtml(descripcion)}</p>` : ''}
+            ${cantidad > 0 ? `
+              <button class="button" onclick="addToCartClick()" style="margin-top:var(--spacing-md);">
+                Agregar al Carrito
+              </button>
+            ` : '<p style="color:var(--color-error);margin-top:var(--spacing-md);">Producto sin stock disponible</p>'}
+          </div>
+        </div>
+      `;
+    }
+    
+    window.addToCartClick = async function() {
+      try {
+        const product = await apiFetch('productos', `/${id()}`);
+        addToCart(product);
+        showToast('Producto agregado al carrito');
+      } catch(err) {
+        console.error('Error agregando al carrito:', err);
+        showToast('No se pudo agregar al carrito');
+      }
+    };
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
   </script>
 </head>
 <body>
   <header></header>
   <main class="container">
-    <section id="detail"></section>
+    <section id="productDetail" class="card"></section>
   </main>
 </body>
 </html>

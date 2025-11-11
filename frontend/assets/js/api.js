@@ -3,7 +3,8 @@ const SERVICES = {
   productos: 'http://localhost:3002/api/productos',
   ordenes: 'http://localhost:3003/api/ordenes',
   solicitudes: 'http://localhost:3004/api/solicitudes',
-  contratos: 'http://localhost:3005/api/contratos'
+  contratos: 'http://localhost:3005/api/contratos',
+  analytics: 'http://localhost:3006/api/analytics'
 };
 
 export function setServiceBase(serviceKey, baseUrl) {
@@ -39,6 +40,15 @@ export async function apiFetch(service, path, { method = 'GET', headers = {}, bo
     return res.text();
   }
   const json = await res.json();
-  return (json && typeof json === 'object' && 'data' in json) ? json.data : json;
+  
+  // Si la respuesta tiene 'data', devolver data, sino devolver el objeto completo
+  // Pero si tiene 'ok: false', lanzar error
+  if (json && typeof json === 'object') {
+    if (json.ok === false) {
+      throw new Error(json.msg || json.error || 'Error en la petición');
+    }
+    return ('data' in json) ? json.data : json;
+  }
+  return json;
 }
 

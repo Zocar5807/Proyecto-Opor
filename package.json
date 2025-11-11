@@ -1,0 +1,56 @@
+{
+  "name": "proyecto-opor",
+  "version": "1.0.0",
+  "description": "Aplicación web de compraventa basada en arquitectura de microservicios",
+  "scripts": {
+    "install:all": "npm run install:usuarios && npm run install:productos && npm run install:ordenes && npm run install:solicitudes && npm run install:contratos && npm run install:analytics",
+    "install:analytics": "cd Microservicios/Analytics && npm install",
+    "install:usuarios": "cd Microservicios/Usuarios && npm install",
+    "install:productos": "cd Microservicios/Productos && npm install",
+    "install:ordenes": "cd Microservicios/Ordenes && npm install",
+    "install:solicitudes": "cd Microservicios/Solicitudes && npm install",
+    "install:contratos": "cd Microservicios/Contratos && npm install",
+    "start:all": "concurrently \"npm run start:usuarios\" \"npm run start:productos\" \"npm run start:ordenes\" \"npm run start:solicitudes\" \"npm run start:contratos\" \"npm run start:analytics\"",
+    "start:analytics": "cd Microservicios/Analytics && npm start",
+    "start:usuarios": "cd Microservicios/Usuarios && node index.js",
+    "start:productos": "cd Microservicios/Productos && node index.js",
+    "start:ordenes": "cd Microservicios/Ordenes && node index.js",
+    "start:solicitudes": "cd Microservicios/Solicitudes && node index.js",
+    "start:contratos": "cd Microservicios/Contratos && node index.js",
+    "dev:usuarios": "cd Microservicios/Usuarios && nodemon index.js",
+    "dev:productos": "cd Microservicios/Productos && nodemon index.js",
+    "dev:ordenes": "cd Microservicios/Ordenes && nodemon index.js",
+    "dev:solicitudes": "cd Microservicios/Solicitudes && nodemon index.js",
+    "dev:contratos": "cd Microservicios/Contratos && nodemon index.js",
+    "dev:all": "concurrently \"npm run dev:usuarios\" \"npm run dev:productos\" \"npm run dev:ordenes\" \"npm run dev:solicitudes\" \"npm run dev:contratos\"",
+    "frontend": "node scripts/serve-frontend.js",
+    "setup": "node scripts/setup.js",
+    "crear-usuarios": "node scripts/crear-usuario-prueba.js",
+    "reclasificar:analizar": "python scripts/reclasificar-productos.py",
+    "reclasificar:aplicar": "python scripts/reclasificar-productos.py --actualizar",
+    "test:all": "node scripts/test-all-functionalities.js"
+  },
+  "keywords": [
+    "microservicios",
+    "nodejs",
+    "express",
+    "mysql"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "dotenv": "^16.4.5",
+    "mysql2": "^3.15.3",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
+
+
+
+
+
+

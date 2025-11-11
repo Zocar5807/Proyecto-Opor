@@ -3,49 +3,711 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Solicitudes - La Oportunidad</title>
-  <link rel="stylesheet" href="../assets/css/base.css">
-  <link rel="stylesheet" href="../assets/css/layout.css">
-  <link rel="stylesheet" href="../assets/css/components.css">
-  <link rel="stylesheet" href="../assets/css/theme.css">
+  <title>Solicitudes de Préstamo - La Oportunidad</title>
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/theme.css">
+  <link rel="icon" href="/assets/img/logo.svg">
+  <style>
+    .request-form {
+      margin-bottom: var(--spacing-xl);
+      background: var(--color-bg-elevated);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+    }
+    
+    .request-form .card__header {
+      background: linear-gradient(135deg, var(--color-primary-50) 0%, var(--color-primary-100) 100%);
+      padding: var(--spacing-6);
+      border-bottom: 2px solid var(--color-primary-200);
+      margin: 0;
+    }
+    
+    .request-form h2 {
+      margin: 0;
+      color: var(--color-primary-800);
+      font-size: var(--font-size-2xl);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-3);
+    }
+    
+    .request-form h2::before {
+      content: '📝';
+      font-size: var(--font-size-2xl);
+    }
+    
+    .request-form form {
+      padding: var(--spacing-6);
+    }
+    
+    .form-group {
+      margin-bottom: var(--spacing-5);
+    }
+    
+    .form-group label {
+      display: block;
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-text-primary);
+      margin-bottom: var(--spacing-2);
+      font-size: var(--font-size-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .form-group .input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: var(--spacing-3) var(--spacing-4);
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      font-size: var(--font-size-base);
+      transition: all var(--transition-base);
+      background: var(--color-bg-elevated);
+    }
+    
+    .form-group .input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px var(--color-primary-100);
+    }
+    
+    .image-upload-area {
+      border: 2px dashed var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-8);
+      text-align: center;
+      background: linear-gradient(135deg, var(--color-bg-tertiary) 0%, var(--color-bg-secondary) 100%);
+      cursor: pointer;
+      transition: all var(--transition-base);
+      position: relative;
+    }
+    
+    .image-upload-area::before {
+      content: '📷';
+      font-size: 3rem;
+      display: block;
+      margin-bottom: var(--spacing-3);
+      opacity: 0.6;
+    }
+    
+    .image-upload-area:hover {
+      border-color: var(--color-primary);
+      background: linear-gradient(135deg, var(--color-primary-50) 0%, var(--color-primary-100) 100%);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .image-upload-area.has-images {
+      border-color: var(--color-primary);
+      background: linear-gradient(135deg, var(--color-primary-100) 0%, var(--color-primary-200) 100%);
+    }
+    
+    .image-upload-area p {
+      margin: 0;
+      color: var(--color-text-secondary);
+      font-weight: var(--font-weight-medium);
+    }
+    
+    .image-preview-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: var(--spacing-4);
+      margin-top: var(--spacing-5);
+    }
+    
+    .image-preview {
+      position: relative;
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      aspect-ratio: 1;
+      background: var(--color-bg-secondary);
+      box-shadow: var(--shadow-sm);
+      transition: all var(--transition-base);
+    }
+    
+    .image-preview:hover {
+      transform: scale(1.05);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .image-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .image-preview button {
+      position: absolute;
+      top: var(--spacing-2);
+      right: var(--spacing-2);
+      background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-md);
+      transition: all var(--transition-base);
+    }
+    
+    .image-preview button:hover {
+      transform: scale(1.1);
+      box-shadow: var(--shadow-lg);
+    }
+    
+    .estimated-value {
+      background: linear-gradient(135deg, var(--color-primary-50) 0%, var(--color-primary-100) 100%);
+      border: 2px solid var(--color-primary-300);
+      border-radius: var(--radius-xl);
+      padding: var(--spacing-6);
+      margin-top: var(--spacing-6);
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .estimated-value h3 {
+      margin: 0 0 var(--spacing-3) 0;
+      color: var(--color-primary-800);
+      font-size: var(--font-size-lg);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-2);
+    }
+    
+    .estimated-value h3::before {
+      content: '💰';
+      font-size: var(--font-size-xl);
+    }
+    
+    .estimated-value .value {
+      font-size: var(--font-size-4xl);
+      font-weight: var(--font-weight-extrabold);
+      color: var(--color-primary);
+      margin: var(--spacing-4) 0;
+      text-shadow: 0 2px 4px rgba(22, 163, 74, 0.1);
+    }
+    
+    .request-card {
+      margin-bottom: var(--spacing-6);
+      transition: all var(--transition-base);
+      border: 1px solid var(--color-border-light);
+    }
+    
+    .request-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--color-primary-200);
+    }
+    
+    .request-card__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: var(--spacing-5);
+      flex-wrap: wrap;
+      gap: var(--spacing-4);
+      padding-bottom: var(--spacing-4);
+      border-bottom: 2px solid var(--color-border-light);
+    }
+    
+    .request-card__header h3 {
+      margin: 0;
+      font-size: var(--font-size-xl);
+      color: var(--color-text-primary);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-2);
+    }
+    
+    .request-card__header h3::before {
+      content: '📦';
+      font-size: var(--font-size-lg);
+    }
+    
+    .request-card__info {
+      display: grid;
+      gap: var(--spacing-3);
+    }
+    
+    .request-card__info-item {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-2);
+      padding: var(--spacing-2) 0;
+    }
+    
+    .request-card__info-label {
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-text-secondary);
+      min-width: 120px;
+      font-size: var(--font-size-sm);
+    }
+    
+    .request-card__info-value {
+      color: var(--color-text-primary);
+    }
+    
+    .request-card__images {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: var(--spacing-4);
+      margin-top: var(--spacing-5);
+      padding-top: var(--spacing-5);
+      border-top: 1px solid var(--color-border-light);
+    }
+    
+    .request-card__images img {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      border-radius: var(--radius-lg);
+      border: 2px solid var(--color-border);
+      transition: all var(--transition-base);
+      cursor: pointer;
+    }
+    
+    .request-card__images img:hover {
+      transform: scale(1.05);
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .submit-button {
+      background: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-primary-700) 100%);
+      color: var(--color-text-on-primary);
+      border: none;
+      padding: var(--spacing-4) var(--spacing-8);
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-semibold);
+      border-radius: var(--radius-xl);
+      cursor: pointer;
+      transition: all var(--transition-base);
+      box-shadow: var(--shadow-md);
+      display: inline-flex;
+      align-items: center;
+      gap: var(--spacing-3);
+      margin-top: var(--spacing-6);
+    }
+    
+    .submit-button:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+      background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-800) 100%);
+    }
+    
+    .submit-button::before {
+      content: '✨';
+      font-size: var(--font-size-xl);
+    }
+  </style>
   <script type="module">
-    import { requireAuth } from '../assets/js/auth.js';
-    import { renderHeader, showToast } from '../assets/js/ui.js';
-    import { apiFetch } from '../assets/js/api.js';
+    import { requireAuth, getUserId } from '/assets/js/auth.js';
+    import { renderHeader, showToast } from '/assets/js/ui.js';
+    import { apiFetch } from '/assets/js/api.js';
     requireAuth();
+    
+    let uploadedImages = [];
+    
     window.addEventListener('DOMContentLoaded', async ()=>{
-      renderHeader();
-      const tbody = document.querySelector('tbody');
-      const form = document.querySelector('form');
-      async function load(){
-        try{
-          const list = await apiFetch('solicitudes','?mine=true');
-          tbody.innerHTML = list.map(s=>`<tr><td>#${s.id}</td><td>${s.nombre_producto ?? s.nombreProducto ?? s.nombre ?? '—'}</td><td>${s.estado ?? 'Pendiente'}</td></tr>`).join('');
-        }catch{ tbody.innerHTML = '<tr><td colspan=3>No se pudieron cargar</td></tr>'; }
+      renderHeader({ active: 'requests' });
+      setupImageUpload();
+      setupForm();
+      await loadRequests();
+    });
+    
+    function setupImageUpload() {
+      const uploadArea = document.getElementById('imageUploadArea');
+      const fileInput = document.getElementById('imageInput');
+      const previewContainer = document.getElementById('imagePreview');
+      
+      uploadArea.addEventListener('click', () => fileInput.click());
+      uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = var(--color-primary);
+      });
+      uploadArea.addEventListener('dragleave', () => {
+        uploadArea.style.borderColor = 'var(--color-border)';
+      });
+      uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = 'var(--color-border)';
+        handleFiles(e.dataTransfer.files);
+      });
+      
+      fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+      });
+      
+      function handleFiles(files) {
+        Array.from(files).slice(0, 3 - uploadedImages.length).forEach(file => {
+          if (!file.type.startsWith('image/')) {
+            showToast('Solo se permiten imágenes');
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            uploadedImages.push(e.target.result);
+            updateImagePreview();
+          };
+          reader.readAsDataURL(file);
+        });
       }
-      await load();
+      
+      function updateImagePreview() {
+        previewContainer.innerHTML = uploadedImages.map((img, idx) => `
+          <div class="image-preview">
+            <img src="${img}" alt="Imagen ${idx + 1}">
+            <button type="button" onclick="removeImage(${idx})" title="Eliminar">×</button>
+          </div>
+        `).join('');
+        
+        if (uploadedImages.length > 0) {
+          uploadArea.classList.add('has-images');
+          uploadArea.querySelector('p').textContent = `${uploadedImages.length} imagen${uploadedImages.length > 1 ? 'es' : ''} seleccionada${uploadedImages.length > 1 ? 's' : ''}`;
+        } else {
+          uploadArea.classList.remove('has-images');
+          uploadArea.querySelector('p').textContent = 'Arrastra imágenes aquí o haz clic para seleccionar';
+        }
+      }
+      
+      window.removeImage = (idx) => {
+        uploadedImages.splice(idx, 1);
+        updateImagePreview();
+      };
+    }
+    
+    function calculateEstimatedValue(categoria, descripcion) {
+      // Cálculo simulado basado en categoría y características
+      const baseValues = {
+        'Joyas': 500000,
+        'Electrónica': 300000,
+        'Herramientas': 200000,
+        'Vehículos': 5000000,
+        'Hogar': 150000,
+        'Otros': 100000
+      };
+      
+      let base = baseValues[categoria] || baseValues['Otros'];
+      
+      // Ajustes según descripción (simulado)
+      const desc = (descripcion || '').toLowerCase();
+      if (desc.includes('nuevo') || desc.includes('nueva')) base *= 1.2;
+      if (desc.includes('usado') || desc.includes('usada')) base *= 0.7;
+      if (desc.includes('excelente') || desc.includes('perfecto')) base *= 1.1;
+      if (desc.includes('buen estado')) base *= 0.9;
+      
+      // Rango estimado (70% - 100% del valor base)
+      const min = Math.round(base * 0.7);
+      const max = Math.round(base * 1.0);
+      
+      return { min, max, promedio: Math.round((min + max) / 2) };
+    }
+    
+    function setupForm() {
+      const form = document.getElementById('requestForm');
+      const categoriaSelect = document.getElementById('categoria');
+      const descripcionInput = document.getElementById('descripcion');
+      const estimatedDiv = document.getElementById('estimatedValue');
+      
+      const updateEstimate = () => {
+        const categoria = categoriaSelect.value;
+        const descripcion = descripcionInput.value;
+        
+        if (categoria && descripcion) {
+          const estimate = calculateEstimatedValue(categoria, descripcion);
+          estimatedDiv.innerHTML = `
+            <h3>Valor estimado del préstamo</h3>
+            <div class="value">$${estimate.promedio.toLocaleString()}</div>
+            <p style="font-size: var(--font-size-sm); color: var(--color-text-muted); margin: 0;">
+              Rango estimado: $${estimate.min.toLocaleString()} - $${estimate.max.toLocaleString()}
+            </p>
+            <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: var(--spacing-xs);">
+              Este es un cálculo estimado. El monto final será determinado por un evaluador.
+            </p>
+          `;
+          estimatedDiv.style.display = 'block';
+        } else {
+          estimatedDiv.style.display = 'none';
+        }
+      };
+      
+      categoriaSelect.addEventListener('change', updateEstimate);
+      descripcionInput.addEventListener('input', updateEstimate);
+      
       form.addEventListener('submit', async (e)=>{
         e.preventDefault();
-        const tipo = document.getElementById('type').value;
         const nombre = document.getElementById('nombre').value.trim();
         const descripcion = document.getElementById('descripcion').value.trim();
-        const categoria = document.getElementById('categoria').value.trim();
-        const imagen1 = document.getElementById('imagen1').value.trim();
-        const imagen2 = document.getElementById('imagen2').value.trim();
-        const imagen3 = document.getElementById('imagen3').value.trim();
-        try{
-          await apiFetch('solicitudes','',{ method:'POST', body:{ tipo, nombre, descripcion, categoria, imagen1, imagen2, imagen3 } });
-          showToast('Solicitud creada');
+        const categoria = document.getElementById('categoria').value;
+        
+        if (!nombre || !descripcion || !categoria) {
+          showToast('Completa todos los campos obligatorios');
+          return;
+        }
+        
+        if (uploadedImages.length === 0) {
+          showToast('Agrega al menos una imagen del artículo');
+          return;
+        }
+        
+        try {
+          await apiFetch('solicitudes', '', {
+            method: 'POST',
+            body: {
+              nombre_producto: nombre,
+              descripcion,
+              categoria,
+              imagenes: uploadedImages
+            }
+          });
+          showToast('Solicitud creada exitosamente');
           form.reset();
-          load();
-        }catch{ showToast('No se pudo crear la solicitud'); }
-      })
-    });
+          uploadedImages = [];
+          document.getElementById('imagePreview').innerHTML = '';
+          document.getElementById('imageUploadArea').classList.remove('has-images');
+          document.getElementById('imageUploadArea').querySelector('p').textContent = 'Arrastra imágenes aquí o haz clic para seleccionar';
+          estimatedDiv.style.display = 'none';
+          await loadRequests();
+        } catch(err) {
+          console.error('Error creando solicitud:', err);
+          showToast('No se pudo crear la solicitud');
+        }
+      });
+    }
+    
+    async function loadRequests() {
+      const container = document.getElementById('requestsContainer');
+      const loadingState = document.getElementById('loadingState');
+      const emptyState = document.getElementById('emptyState');
+      
+      try {
+        loadingState.style.display = 'block';
+        container.style.display = 'none';
+        emptyState.style.display = 'none';
+        
+        const response = await apiFetch('solicitudes', '?mine=true');
+        const requests = Array.isArray(response) ? response : (response?.data || []);
+        
+        if (requests.length === 0) {
+          loadingState.style.display = 'none';
+          emptyState.style.display = 'block';
+          return;
+        }
+        
+        renderRequests(requests);
+        container.style.display = 'block';
+        emptyState.style.display = 'none';
+      } catch (err) {
+        console.error('Error cargando solicitudes:', err);
+        container.innerHTML = `
+          <div class="empty-state">
+            <h3 class="empty-state-title">Error al cargar solicitudes</h3>
+            <p class="empty-state-text">${err.message || 'Hubo un problema conectando con el servidor'}</p>
+          </div>
+        `;
+        container.style.display = 'block';
+      } finally {
+        loadingState.style.display = 'none';
+      }
+    }
+    
+    function renderRequests(requests) {
+      const container = document.getElementById('requestsContainer');
+      
+      container.innerHTML = requests.map(req => {
+        const id = req.id;
+        const nombre = req.nombre_producto || req.nombre || 'Sin nombre';
+        const descripcion = req.descripcion || '';
+        const categoria = req.categoria || 'Sin categoría';
+        const estado = req.estado || 'Pendiente';
+        const fecha = req.fecha_creacion || req.created_at;
+        const monto = req.monto_aprobado;
+        const imagenes = req.imagenes || [];
+        
+        const estadoBadge = getEstadoBadge(estado);
+        const categoriaIcon = getCategoriaIcon(categoria);
+        
+        return `
+          <article class="card request-card">
+            <div class="request-card__header">
+              <div style="flex: 1;">
+                <h3>${escapeHtml(nombre)}</h3>
+                <p style="margin: var(--spacing-2) 0 0; color: var(--color-text-muted); font-size: var(--font-size-sm);">
+                  📅 ${formatDate(fecha)}
+                </p>
+              </div>
+              ${estadoBadge}
+            </div>
+            <div class="request-card__info">
+              <div class="request-card__info-item">
+                <span class="request-card__info-label">Categoría:</span>
+                <span class="request-card__info-value">${categoriaIcon} ${escapeHtml(categoria)}</span>
+              </div>
+              ${descripcion ? `
+                <div class="request-card__info-item">
+                  <span class="request-card__info-label">Descripción:</span>
+                  <span class="request-card__info-value">${escapeHtml(descripcion)}</span>
+                </div>
+              ` : ''}
+              ${monto ? `
+                <div class="request-card__info-item" style="margin-top: var(--spacing-3); padding-top: var(--spacing-3); border-top: 2px solid var(--color-primary-200); background: linear-gradient(135deg, var(--color-primary-50) 0%, transparent 100%); padding: var(--spacing-4); border-radius: var(--radius-lg);">
+                  <span class="request-card__info-label">💰 Monto aprobado:</span>
+                  <span class="request-card__info-value" style="color: var(--color-primary); font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold);">
+                    ${formatCurrency(monto)}
+                  </span>
+                </div>
+              ` : ''}
+            </div>
+            ${imagenes.length > 0 ? `
+              <div class="request-card__images">
+                ${imagenes.map(img => `<img src="${escapeHtml(img)}" alt="Imagen del artículo" onerror="this.style.display='none'">`).join('')}
+              </div>
+            ` : ''}
+          </article>
+        `;
+      }).join('');
+    }
+    
+    function getCategoriaIcon(categoria) {
+      const icons = {
+        'Joyas': '💍',
+        'Electrónica': '📱',
+        'Herramientas': '🔧',
+        'Vehículos': '🚗',
+        'Hogar': '🏠',
+        'Otros': '📦'
+      };
+      return icons[categoria] || '📦';
+    }
+    
+    function formatCurrency(amount) {
+      return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0
+      }).format(amount || 0);
+    }
+    
+    function getEstadoBadge(estado) {
+      const badges = {
+        'Pendiente': 'badge--warning',
+        'Aprobado': 'badge--success',
+        'Rechazado': 'badge--error'
+      };
+      const clase = badges[estado] || 'badge--secondary';
+      return `<span class="badge ${clase}">${estado}</span>`;
+    }
+    
+    function formatDate(dateStr) {
+      if (!dateStr) return '—';
+      try {
+        return new Date(dateStr).toLocaleDateString('es-ES', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch {
+        return dateStr;
+      }
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
   </script>
 </head>
 <body>
   <header></header>
   <main class="container">
+    <div class="page-header">
+      <h1 class="page-title">Solicitudes de Préstamo</h1>
+      <p class="text-muted">Registra un bien para solicitar un préstamo</p>
+    </div>
+    
+    <section class="card request-form">
+      <div class="card__header">
+        <h2>Nueva Solicitud de Préstamo</h2>
+        <p style="margin: var(--spacing-2) 0 0; color: var(--color-text-muted); font-size: var(--font-size-sm);">
+          Completa el formulario para solicitar un préstamo con garantía
+        </p>
+      </div>
+      <form id="requestForm">
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--spacing-5);">
+          <div class="form-group">
+            <label for="nombre">Nombre del artículo *</label>
+            <input class="input" id="nombre" placeholder="Ej: Anillo de oro 18k, iPhone 12, etc." required>
+          </div>
+          <div class="form-group">
+            <label for="categoria">Categoría *</label>
+            <select class="input" id="categoria" required>
+              <option value="">Selecciona una categoría</option>
+              <option value="Joyas">💍 Joyas</option>
+              <option value="Electrónica">📱 Electrónica</option>
+              <option value="Herramientas">🔧 Herramientas</option>
+              <option value="Vehículos">🚗 Vehículos</option>
+              <option value="Hogar">🏠 Hogar</option>
+              <option value="Otros">📦 Otros</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="descripcion">Descripción detallada *</label>
+          <textarea class="input" id="descripcion" rows="5" placeholder="Describe el estado, características, marca, modelo, año, accesorios incluidos, etc." required></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label>Imágenes del artículo * (máximo 3)</label>
+          <div class="image-upload-area" id="imageUploadArea">
+            <p>Arrastra imágenes aquí o haz clic para seleccionar</p>
+            <input type="file" id="imageInput" accept="image/*" multiple style="display:none">
+          </div>
+          <div class="image-preview-container" id="imagePreview"></div>
+        </div>
+        
+        <div class="estimated-value" id="estimatedValue" style="display:none;"></div>
+        
+        <button class="submit-button" type="submit">Enviar Solicitud</button>
+      </form>
+    </section>
+    
+    <div class="page-header" style="margin-top: var(--spacing-2xl);">
+      <h2 class="page-title">Mis Solicitudes</h2>
+    </div>
+    
+    <div id="loadingState" class="empty-state" style="display: none;">
+      <div class="spinner" style="margin: 0 auto;"></div>
+      <p class="empty-state-text">Cargando solicitudes...</p>
+    </div>
+    
+    <div id="emptyState" class="empty-state" style="display: none;">
+      <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 7L12 3L4 7M20 7L12 11M20 7V17L12 21M12 11L4 7M12 11V21M4 7V17L12 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <h3 class="empty-state-title">No tienes solicitudes aún</h3>
+      <p class="empty-state-text">Crea tu primera solicitud de préstamo arriba.</p>
+    </div>
+    
+    <section id="requestsContainer" style="display:none;"></section>
+  </main>
+</body>
+</html>
+
+
     <h1>Solicitudes de contrato</h1>
     <section class="card" style="margin-bottom:16px">
       <form>

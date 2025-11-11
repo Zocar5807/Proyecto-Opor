@@ -2,18 +2,49 @@ require('dotenv').config();
 const express = require('express');
 const router = express.Router();
 const usuariosModel = require('../models/usuariosModel');
-const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { authenticateJWT, requireAdmin } = require('../auth/authMiddleware');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'tu_secreto_superseguro';
+
+function esAdmin(req) {
+  const rol = req.user?.rol;
+  return rol && String(rol).toLowerCase() === 'admin';
+}
+
+function esEmpleado(req) {
+  const rol = req.user?.rol;
+  return rol && String(rol).toLowerCase() === 'empleado';
+}
+
+function asegurarPropietario(req, res, next) {
+  const solicitanteId = Number(req.user?.id);
+  const objetivoId = Number(req.params.id);
+  if (Number.isNaN(objetivoId)) {
+    return res.status(400).json({ ok: false, msg: 'ID inválido' });
+  }
+
+  if (esAdmin(req) || solicitanteId === objetivoId) {
+    return next();
+  }
+
+  return res.status(403).json({ ok: false, msg: 'No tienes permiso para esta operación' });
+}
+
+function asegurarAccesoPorCedula(req, res, next) {
+  if (esAdmin(req) || esEmpleado(req)) {
+    return next();
+  }
+  return res.status(403).json({ ok: false, msg: 'Solo personal autorizado puede consultar por cédula' });
+}
 
 // --- PING ---
 router.get('/ping', (req, res) => {
   res.json({ ok: true, msg: 'Microservicio Usuarios - OK' });
 });
 
-// --- LISTAR USUARIOS ---
-router.get('/', async (req, res) => {
+// --- LISTAR USUARIOS (solo admins) ---
+router.get('/', authenticateJWT, requireAdmin, async (req, res) => {
   try {
     const result = await usuariosModel.traerUsuarios();
     res.json({ ok: true, data: result });
@@ -22,12 +53,10 @@ router.get('/', async (req, res) => {
   }
 });
 
-
-// --- TRAER USUARIO POR ID ---
-router.get('/:id', async (req, res) => {
+// --- USUARIO ACTUAL ---
+router.get('/me', authenticateJWT, async (req, res) => {
   try {
-    const id = req.params.id;
-    const user = await usuariosModel.traerUsuarioPorId(id);
+    const user = await usuariosModel.traerUsuarioPorId(req.user.id);
     if (!user) return res.status(404).json({ ok:false, msg: 'Usuario no encontrado' });
     res.json({ ok: true, data: user });
   } catch (err) {
@@ -35,8 +64,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// --- 🔹 TRAER USUARIO POR CÉDULA ---
-router.get('/cedula/:cedula', async (req, res) => {
+// --- TRAER USUARIO POR CÉDULA (solo staff) ---
+router.get('/cedula/:cedula', authenticateJWT, asegurarAccesoPorCedula, async (req, res) => {
   try {
     const cedula = req.params.cedula;
     const user = await usuariosModel.traerUsuarioPorCedula(cedula);
@@ -47,85 +76,155 @@ router.get('/cedula/:cedula', async (req, res) => {
   }
 });
 
-// --- CREAR USUARIO ---
+// --- TRAER USUARIO POR ID (propietario o admin) ---
+router.get('/:id', authenticateJWT, asegurarPropietario, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const user = await usuariosModel.traerUsuarioPorId(id);
+    if (!user) return res.status(404).json({ ok:false, msg: 'Usuario no encontrado' });
+    res.json({ ok: true, data: user });
+  } catch (err) {
+    res.status(500).json({ ok:false, error: err.message });
+  }
+});
+
+// --- REGISTRO DE CLIENTES ---
 router.post('/', async (req, res) => {
   try {
-    const { cedula, nombres, apellidos, username, password, telefono, email, direccion, rol } = req.body;
+    const {
+      cedula,
+      nombres,
+      apellidos,
+      username,
+      password,
+      telefono,
+      email,
+      direccion,
+      ciudad,
+      preferencias
+    } = req.body || {};
 
     if (!cedula || !nombres || !apellidos || !username || !password) {
       return res.status(400).json({ ok: false, msg: 'Faltan campos obligatorios' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const nuevoUsuario = {
+    const nuevoUsuario = await usuariosModel.crearUsuario({
       cedula,
       nombres,
       apellidos,
       username,
-      password: hashedPassword,
+      password,
       telefono,
       email,
       direccion,
-      rol: rol || 'cliente',
+      ciudad,
+      preferencias: preferencias && typeof preferencias === 'object' ? preferencias : {},
+      rol: 'cliente',
       estado: 'activo'
-    };
+    });
 
-    const created = await usuariosModel.crearUsuario(nuevoUsuario);
-    res.status(201).json({ ok: true, msg: 'Usuario creado', data: created });
+    res.status(201).json({ ok: true, msg: 'Usuario registrado', data: nuevoUsuario });
   } catch (err) {
     console.error('Error creando usuario:', err);
     res.status(500).json({ ok: false, msg: 'Error creando usuario', error: err.message });
   }
 });
 
+// --- CREAR EMPLEADO (solo admin) ---
+router.post('/empleados', authenticateJWT, requireAdmin, async (req, res) => {
+  try {
+    const {
+      cedula,
+      nombres,
+      apellidos,
+      username,
+      password,
+      telefono,
+      email,
+      direccion,
+      ciudad,
+      preferencias
+    } = req.body || {};
+
+    if (!cedula || !nombres || !apellidos || !username || !password) {
+      return res.status(400).json({ ok: false, msg: 'Faltan campos obligatorios' });
+    }
+
+    const nuevoUsuario = await usuariosModel.crearUsuario({
+      cedula,
+      nombres,
+      apellidos,
+      username,
+      password,
+      telefono,
+      email,
+      direccion,
+      ciudad,
+      preferencias: preferencias && typeof preferencias === 'object' ? preferencias : {},
+      rol: 'empleado',
+      estado: 'activo'
+    });
+
+    res.status(201).json({ ok: true, msg: 'Empleado creado', data: nuevoUsuario });
+  } catch (err) {
+    console.error('Error creando empleado:', err);
+    res.status(500).json({ ok: false, msg: 'Error creando empleado', error: err.message });
+  }
+});
+
 // --- LOGIN ---
 router.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password } = req.body || {};
+    if (!username || !password) {
+      return res.status(400).json({ ok: false, msg: 'Usuario y contraseña son obligatorios' });
+    }
+
     const user = await usuariosModel.validarUsuario(username, password);
     if (!user) return res.status(401).json({ ok:false, msg: 'Credenciales inválidas' });
 
-    const token = jwt.sign({
+    const tokenPayload = {
       id: user.usu_codigo,
-      nombre: user.nombres,
+      nombres: user.nombres,
       apellidos: user.apellidos,
       cedula: user.cedula,
       username: user.username,
       direccion: user.direccion,
       rol: user.rol,
-      email: user.email,
-      telefono: user.telefono
-    }, JWT_SECRET, { expiresIn: '2h' });
+      email: user.email || '',
+      telefono: user.telefono || '',
+      preferencias: user.preferencias || {}
+    };
 
-    res.json({ ok:true, token });
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '2h' });
+
+    res.json({ ok:true, data: { token, user } });
   } catch (err) {
     res.status(500).json({ ok:false, error: err.message });
   }
 });
 
 // --- ACTUALIZAR USUARIO ---
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateJWT, asegurarPropietario, async (req, res) => {
   try {
-    const id = req.params.id;
-    const datos = req.body;
+    const id = Number(req.params.id);
+    const datos = req.body || {};
 
     if (!datos || Object.keys(datos).length === 0) {
       return res.status(400).json({ ok: false, msg: 'No se enviaron datos para actualizar' });
     }
 
-    // No permitir que cambien el ID o el estado directamente por aquí
     delete datos.usu_codigo;
     delete datos.id;
-    delete datos.estado;
     delete datos.deleted_at;
     delete datos.created_at;
     delete datos.updated_at;
+    // El estado solo lo puede cambiar un admin
+    if (!esAdmin(req)) delete datos.estado;
+    if (!esAdmin(req)) delete datos.rol;
 
-    // Si viene password, la encriptamos antes de guardar
-    if (datos.password) {
-      const bcrypt = require('bcrypt');
-      datos.password = await bcrypt.hash(datos.password, 10);
+    if (datos.preferencias && typeof datos.preferencias !== 'object') {
+      return res.status(400).json({ ok:false, msg:'Preferencias debe ser un objeto' });
     }
 
     const updatedUser = await usuariosModel.actualizarUsuario(id, datos);
@@ -142,8 +241,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // --- ELIMINAR USUARIO (soft delete) ---
-// DELETE /usuarios/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateJWT, requireAdmin, async (req, res) => {
   try {
     const id = req.params.id;
     const result = await usuariosModel.eliminarUsuario(id);
@@ -157,6 +255,5 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
-
 
 module.exports = router;
