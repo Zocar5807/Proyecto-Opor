@@ -2,6 +2,8 @@
 
 Aplicación web de compraventa y préstamos basada en arquitectura de microservicios. Incluye gestión de usuarios, productos, órdenes, solicitudes de préstamo, contratos, pagos y liquidez por sucursal.
 
+Diapositicas e Informe: https://drive.google.com/drive/folders/1FsTkxsiV68ZoVGuJ4UgXQIVCDV7j06Ec?usp=sharing
+
 ##  Inicio Rápido
 
 ### 1. Instalar dependencias
